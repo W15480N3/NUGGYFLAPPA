@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>High Flyer Promo</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Courier New', Courier, monospace; }
+        #ui-layer { position: absolute; text-align: center; pointer-events: none; width: 100%; max-width: 400px; }
+        .menu { pointer-events: auto; background: rgba(20, 40, 20, 0.9); border: 3px solid #4ade80; border-radius: 20px; padding: 30px; color: white; display: none; }
+        h1 { color: #4ade80; text-shadow: 0 0 10px #4ade80; margin-top: 0; }
+        button { background: #4ade80; color: #000; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+        button:hover { transform: scale(1.1); background: #fff; }
+        .coupon-box { font-size: 24px; color: #fbbf24; margin: 20px 0; font-weight: bold; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div id="start-menu" class="menu" style="display: block;">
+            <h1>HIGH FLYER</h1>
+            <p>Tap to levitate through the smoke.</p>
+            <button onclick="startGame()">START BLAZING</button>
+        </div>
+
+        <div id="game-over" class="menu">
+            <h1>BUSTED!</h1>
+            <p id="final-score">Score: 0</p>
+            <div id="coupon-area" class="coupon-box">CODE: BLAZE20</div>
+            <p id="fail-msg">Get 10 points for a discount!</p>
+            <button onclick="resetGame()">RETRY</button>
+        </div>
+    </div>
+
+<script>
+const config = {
+    type: Phaser.AUTO,
+    width: 400,
+    height: 600,
+    parent: 'ui-layer',
+    transparent: true,
+    physics: { default: 'arcade', arcade: { gravity: { y: 1000 }, debug: false } },
+    scene: { preload: preload, create: create, update: update }
+};
+
+let game = new Phaser.Game(config);
+let player, bongs, score = 0, isStarted = false, smokeParticles;
+
+function preload() {
+    // LOAD YOUR ASSET HERE
+    this.load.image('nug', 'nug.png'); 
+
+    // Creating procedural assets for smoke and bongs
+    let gfx = this.make.graphics();
+    
+    // Smoke Particle
+    gfx.fillStyle(0xffffff, 0.2);
+    gfx.fillCircle(10, 10, 10);
+    gfx.generateTexture('smoke', 20, 20);
+
+    // Bong (Procedural)
+    gfx.clear();
+    gfx.lineStyle(4, 0x4ade80, 1);
+    gfx.fillStyle(0x818cf8, 0.5);
+    gfx.fillRect(0, 0, 60, 400);
+    gfx.strokeRect(0, 0, 60, 400);
+    gfx.generateTexture('bong', 60, 400);
+}
+
+function create() {
+    // Floating Background Effect (Stars/Sparkles)
+    this.cameras.main.setBackgroundColor('#0a1a0a');
+    
+    // Player Setup
+    player = this.physics.add.sprite(100, 300, 'nug');
+    player.setScale(0.4); // Adjust based on your image size
+    player.setCircle(110, 60, 60); // Centering collision on the nug body
+    player.body.allowGravity = false;
+
+    // Smoke System
+    smokeParticles = this.add.particles(0, 0, 'smoke', {
+        scale: { start: 1, end: 4 },
+        alpha: { start: 0.6, end: 0 },
+        lifespan: 2000,
+        speed: { min: 20, max: 40 },
+        frequency: 150
+    });
+
+    bongs = this.physics.add.group();
+
+    // Input
+    this.input.on('pointerdown', () => {
+        if(!isStarted) return;
+        player.setVelocityY(-350);
+        // Subtle tilt animation
+        this.tweens.add({ targets: player, angle: -10, duration: 150, yoyo: true });
+    });
+
+    this.physics.add.collider(player, bongs, gameOver, null, this);
+}
+
+function update() {
+    if (!isStarted) return;
+
+    if (player.y > 600 || player.y < 0) gameOver.call(this);
+
+    // Make player gently "hover" visually
+    player.y += Math.sin(this.time.now / 200) * 0.5;
+}
+
+function spawnBongs() {
+    if (!isStarted) return;
+
+    const gap = 180;
+    const spawnX = 450;
+    const randomY = Phaser.Math.Between(150, 450);
+
+    const topBong = bongs.create(spawnX, randomY - (gap / 2), 'bong').setOrigin(0.5, 1);
+    const botBong = bongs.create(spawnX, randomY + (gap / 2), 'bong').setOrigin(0.5, 0);
+
+    topBong.body.allowGravity = false;
+    botBong.body.allowGravity = false;
+    topBong.setVelocityX(-200);
+    botBong.setVelocityX(-200);
+
+    // Add smoke to the bottom bong tip
+    smokeParticles.emitParticleAt(spawnX, randomY + (gap / 2));
+
+    // Cleanup & Scoring
+    this.time.delayedCall(3000, () => {
+        if(topBong.active) {
+            topBong.destroy();
+            botBong.destroy();
+            score++;
+        }
+    });
+}
+
+function startGame() {
+    document.getElementById('start-menu').style.display = 'none';
+    isStarted = true;
+    player.body.allowGravity = true;
+    // Start Spawning
+    game.scene.scenes[0].time.addEvent({ delay: 1800, callback: spawnBongs, callbackScope: game.scene.scenes[0], loop: true });
+}
+
+function gameOver() {
+    isStarted = false;
+    this.physics.pause();
+    player.setTint(0xff3333);
+    
+    document.getElementById('game-over').style.display = 'block';
+    document.getElementById('final-score').innerText = "SCORE: " + score;
+    
+    if (score >= 10) {
+        document.getElementById('coupon-area').style.display = 'block';
+        document.getElementById('fail-msg').innerText = "STASH UNLOCKED!";
+    }
+}
+
+function resetGame() {
+    window.location.reload();
+}
+</script>
+</body>
+</html>
