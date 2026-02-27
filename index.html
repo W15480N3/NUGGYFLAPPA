@@ -32,25 +32,21 @@
     </div>
 
 <script>
-// --- SYNTHETIC SOUND ENGINE ---
+// --- AUDIO ENGINE ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    osc.connect(gain); gain.connect(audioCtx.destination);
     const now = audioCtx.currentTime;
     if (type === 'flap') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(150, now);
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(150, now);
         osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
-        gain.gain.setValueAtTime(0.1, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(); osc.stop(now + 0.1);
     } else if (type === 'score') {
         osc.type = 'sine'; osc.frequency.setValueAtTime(880, now);
-        gain.gain.setValueAtTime(0.1, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
         osc.start(); osc.stop(now + 0.3);
     } else if (type === 'crash') {
         const bufferSize = audioCtx.sampleRate * 0.3;
@@ -60,20 +56,16 @@ function playSound(type) {
         const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
         const noiseGain = audioCtx.createGain(); noise.connect(noiseGain);
         noiseGain.connect(audioCtx.destination);
-        noiseGain.gain.setValueAtTime(0.2, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        noiseGain.gain.setValueAtTime(0.2, now); noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
         noise.start();
     }
 }
 
-// --- GAME ENGINE ---
+// --- GAME CONFIG ---
 const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
-    physics: { 
-        default: 'arcade', 
-        arcade: { gravity: { y: 1300 }, debug: true } 
-    },
+    physics: { default: 'arcade', arcade: { gravity: { y: 1300 }, debug: true } },
     scene: { preload: preload, create: create, update: update }
 };
 
@@ -85,21 +77,24 @@ function preload() {
     this.load.image('bong', 'bong.png'); 
     this.load.image('vegas', 'vegas.png'); 
     let gfx = this.make.graphics();
-    gfx.fillStyle(0xffffff, 0.3);
-    gfx.fillCircle(10, 10, 10);
+    gfx.fillStyle(0xffffff, 0.3); gfx.fillCircle(10, 10, 10);
     gfx.generateTexture('smoke', 20, 20);
 }
 
 function create() {
+    // BACKGROUND FIX:
+    // We scale it so the height fills 600px. 
+    // Since your image is roughly 1000x500, scaling height to 600 makes it roughly 1200x600.
     background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
-    background.setTileScale(400 / 1920, 600 / 1080);
+    background.setTileScale(1.2, 1.2); // Zooms in to hide white bars and fill height
+    background.tilePositionY = -20; // Minor adjustment to center the city vertically
 
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
     
-    // NUG HITBOX: Pushed right (Adjust 260 if needed)
-    player.body.setSize(70, 70);
-    player.body.setOffset(260, 110); 
+    // NUG HITBOX: Pushed even further right (X=300)
+    player.body.setSize(60, 60);
+    player.body.setOffset(300, 120); 
 
     player.body.allowGravity = false;
     player.setDepth(10);
@@ -125,12 +120,13 @@ function create() {
 }
 
 function update() {
-    background.tilePositionX += 1.2;
+    background.tilePositionX += 1.5;
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 300) * 15;
         return;
     }
     if (player.y > 600 || player.y < 0) gameOver.call(this);
+    
     bongs.children.entries.forEach(bong => {
         if (bong.x < player.x && !bong.scored) {
             score += 0.5;
@@ -143,7 +139,7 @@ function update() {
 
 function spawnBongs() {
     if (!isStarted) return;
-    const gap = 230; 
+    const gap = 240; 
     const spawnX = 550;
     const randomY = Phaser.Math.Between(150, 450);
 
@@ -153,14 +149,14 @@ function spawnBongs() {
 
     topBong.body.allowGravity = false;
     botBong.body.allowGravity = false;
-    topBong.setVelocityX(-250);
-    botBong.setVelocityX(-250);
+    topBong.setVelocityX(-260);
+    botBong.setVelocityX(-260);
 
     // BONG HITBOXES: 
-    // Increased Offset X to 280 to push them right.
-    // For TOP BONG, we use Offset Y to pull it "UP" toward the mouthpiece.
-    topBong.body.setSize(45, 400).setOffset(280, 100); 
-    botBong.body.setSize(45, 400).setOffset(280, 0);
+    // Pushed way right to X=320. 
+    // Top Bong Y offset at 150 to pull the box UP into the mouthpiece.
+    topBong.body.setSize(45, 400).setOffset(320, 150); 
+    botBong.body.setSize(45, 400).setOffset(320, 0);
 
     topBong.setDepth(8);
     botBong.setDepth(8);
