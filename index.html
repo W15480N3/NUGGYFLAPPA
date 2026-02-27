@@ -82,19 +82,17 @@ function preload() {
 }
 
 function create() {
-    // BACKGROUND FIX:
-    // We scale it so the height fills 600px. 
-    // Since your image is roughly 1000x500, scaling height to 600 makes it roughly 1200x600.
+    // BACKGROUND FIX: Forced Stretch & Slower Scroll
     background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
-    background.setTileScale(1.2, 1.2); // Zooms in to hide white bars and fill height
-    background.tilePositionY = -20; // Minor adjustment to center the city vertically
+    // This stretches the image to exactly match the game height
+    background.setDisplaySize(400, 600); 
 
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
     
-    // NUG HITBOX: Pushed even further right (X=300)
+    // NUG HITBOX (Centered on Nug)
     player.body.setSize(60, 60);
-    player.body.setOffset(300, 120); 
+    player.body.setOffset(310, 120); 
 
     player.body.allowGravity = false;
     player.setDepth(10);
@@ -120,7 +118,9 @@ function create() {
 }
 
 function update() {
-    background.tilePositionX += 1.5;
+    // SLOWED DOWN: 0.8 is much smoother than 1.5
+    background.tilePositionX += 0.8;
+
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 300) * 15;
         return;
@@ -139,7 +139,7 @@ function update() {
 
 function spawnBongs() {
     if (!isStarted) return;
-    const gap = 240; 
+    const gap = 260; // Slightly wider for better mobile play
     const spawnX = 550;
     const randomY = Phaser.Math.Between(150, 450);
 
@@ -152,11 +152,12 @@ function spawnBongs() {
     topBong.setVelocityX(-260);
     botBong.setVelocityX(-260);
 
-    // BONG HITBOXES: 
-    // Pushed way right to X=320. 
-    // Top Bong Y offset at 150 to pull the box UP into the mouthpiece.
-    topBong.body.setSize(45, 400).setOffset(320, 150); 
-    botBong.body.setSize(45, 400).setOffset(320, 0);
+    // BONG HITBOX PRECISION FIX:
+    // Shorter height (300) ensures the gap is truly open.
+    // Top Bong Y offset moved to 300 to pull it HIGHER.
+    // Bot Bong Y offset moved to 100 to push it LOWER.
+    topBong.body.setSize(45, 300).setOffset(320, 300); 
+    botBong.body.setSize(45, 300).setOffset(320, 100);
 
     topBong.setDepth(8);
     botBong.setDepth(8);
@@ -165,8 +166,8 @@ function spawnBongs() {
         delay: 50, repeat: 30,
         callback: () => {
             if (botBong.active) {
-                smokeParticles.emitParticleAt(botBong.x, botBong.y + 5);
-                smokeParticles.emitParticleAt(topBong.x, topBong.y - 5);
+                smokeParticles.emitParticleAt(botBong.x, botBong.y + 15);
+                smokeParticles.emitParticleAt(topBong.x, topBong.y - 15);
             }
         }
     });
@@ -177,7 +178,7 @@ function startGame() {
     document.getElementById('start-menu').style.display = 'none';
     isStarted = true;
     player.body.allowGravity = true;
-    spawnTimer = this.time.addEvent({ delay: 1500, callback: spawnBongs, callbackScope: this, loop: true });
+    spawnTimer = this.time.addEvent({ delay: 1600, callback: spawnBongs, callbackScope: this, loop: true });
 }
 
 function gameOver() {
