@@ -34,40 +34,31 @@
 <script>
 // --- SYNTHETIC SOUND ENGINE ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
 function playSound(type) {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-
     const now = audioCtx.currentTime;
-
     if (type === 'flap') {
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(150, now);
         osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
         gain.gain.setValueAtTime(0.1, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        osc.start();
-        osc.stop(now + 0.1);
+        osc.start(); osc.stop(now + 0.1);
     } else if (type === 'score') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, now);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(880, now);
         gain.gain.setValueAtTime(0.1, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-        osc.start();
-        osc.stop(now + 0.3);
+        osc.start(); osc.stop(now + 0.3);
     } else if (type === 'crash') {
-        // Noise synthesis for crash
         const bufferSize = audioCtx.sampleRate * 0.3;
         const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
-        const noise = audioCtx.createBufferSource();
-        noise.buffer = buffer;
-        const noiseGain = audioCtx.createGain();
-        noise.connect(noiseGain);
+        const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
+        const noiseGain = audioCtx.createGain(); noise.connect(noiseGain);
         noiseGain.connect(audioCtx.destination);
         noiseGain.gain.setValueAtTime(0.2, now);
         noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
@@ -93,7 +84,6 @@ function preload() {
     this.load.image('nug', 'nug.png'); 
     this.load.image('bong', 'bong.png'); 
     this.load.image('vegas', 'vegas.png'); 
-
     let gfx = this.make.graphics();
     gfx.fillStyle(0xffffff, 0.3);
     gfx.fillCircle(10, 10, 10);
@@ -101,26 +91,22 @@ function preload() {
 }
 
 function create() {
-    // Background scaling fix
     background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
-    background.setTileScale(400 / 1920, 600 / 1080); // Adjusting for typical image ratio
+    background.setTileScale(400 / 1920, 600 / 1080);
 
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
     
-    // NUG HITBOX: Pushed right
-    player.body.setSize(80, 80);
-    player.body.setOffset(210, 120); 
+    // NUG HITBOX: Pushed right (Adjust 260 if needed)
+    player.body.setSize(70, 70);
+    player.body.setOffset(260, 110); 
 
     player.body.allowGravity = false;
     player.setDepth(10);
 
     smokeParticles = this.add.particles(0, 0, 'smoke', {
-        scale: { start: 1, end: 6 },
-        alpha: { start: 0.4, end: 0 },
-        lifespan: 1200,
-        speed: { min: 20, max: 40 },
-        frequency: 50
+        scale: { start: 1, end: 6 }, alpha: { start: 0.4, end: 0 },
+        lifespan: 1200, speed: { min: 20, max: 40 }, frequency: 50
     }).setDepth(5);
 
     bongs = this.physics.add.group();
@@ -134,21 +120,17 @@ function create() {
     });
 
     this.physics.add.collider(player, bongs, gameOver, null, this);
-
     document.getElementById('start-btn').onclick = () => startGame.call(this);
     document.getElementById('retry-btn').onclick = () => window.location.reload();
 }
 
 function update() {
     background.tilePositionX += 1.2;
-
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 300) * 15;
         return;
     }
-
     if (player.y > 600 || player.y < 0) gameOver.call(this);
-
     bongs.children.entries.forEach(bong => {
         if (bong.x < player.x && !bong.scored) {
             score += 0.5;
@@ -161,7 +143,6 @@ function update() {
 
 function spawnBongs() {
     if (!isStarted) return;
-
     const gap = 230; 
     const spawnX = 550;
     const randomY = Phaser.Math.Between(150, 450);
@@ -175,16 +156,17 @@ function spawnBongs() {
     topBong.setVelocityX(-250);
     botBong.setVelocityX(-250);
 
-    // BONG HITBOXES: Pushed right to center on the neck
-    topBong.body.setSize(50, 480).setOffset(220, 0); 
-    botBong.body.setSize(50, 480).setOffset(220, 0);
+    // BONG HITBOXES: 
+    // Increased Offset X to 280 to push them right.
+    // For TOP BONG, we use Offset Y to pull it "UP" toward the mouthpiece.
+    topBong.body.setSize(45, 400).setOffset(280, 100); 
+    botBong.body.setSize(45, 400).setOffset(280, 0);
 
     topBong.setDepth(8);
     botBong.setDepth(8);
 
     this.time.addEvent({
-        delay: 50,
-        repeat: 30,
+        delay: 50, repeat: 30,
         callback: () => {
             if (botBong.active) {
                 smokeParticles.emitParticleAt(botBong.x, botBong.y + 5);
