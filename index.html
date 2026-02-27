@@ -32,7 +32,7 @@
     </div>
 
 <script>
-// --- AUDIO ENGINE ---
+// --- AUDIO ENGINE (NO MP3s NEEDED) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
     const osc = audioCtx.createOscillator();
@@ -82,17 +82,18 @@ function preload() {
 }
 
 function create() {
-    // BACKGROUND FIX: Forced Stretch & Slower Scroll
+    // 1. STRETCHED VEGAS BACKGROUND
     background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
-    // This stretches the image to exactly match the game height
-    background.setDisplaySize(400, 600); 
+    background.width = 400;
+    background.height = 600;
+    background.setDisplaySize(400, 600);
 
+    // 2. PLAYER NUG
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
-    
-    // NUG HITBOX (Centered on Nug)
+    // Move Nug Box Right: Increased to 350
     player.body.setSize(60, 60);
-    player.body.setOffset(310, 120); 
+    player.body.setOffset(350, 120); 
 
     player.body.allowGravity = false;
     player.setDepth(10);
@@ -118,8 +119,8 @@ function create() {
 }
 
 function update() {
-    // SLOWED DOWN: 0.8 is much smoother than 1.5
-    background.tilePositionX += 0.8;
+    // 3. SLOWER SCROLL (0.7)
+    background.tilePositionX += 0.7;
 
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 300) * 15;
@@ -139,8 +140,8 @@ function update() {
 
 function spawnBongs() {
     if (!isStarted) return;
-    const gap = 260; // Slightly wider for better mobile play
-    const spawnX = 550;
+    const gap = 280; // WIDER GAP for playability
+    const spawnX = 600;
     const randomY = Phaser.Math.Between(150, 450);
 
     const topBong = bongs.create(spawnX, randomY - (gap / 2), 'bong').setOrigin(0.5, 1);
@@ -149,15 +150,15 @@ function spawnBongs() {
 
     topBong.body.allowGravity = false;
     botBong.body.allowGravity = false;
-    topBong.setVelocityX(-260);
-    botBong.setVelocityX(-260);
+    topBong.setVelocityX(-240);
+    botBong.setVelocityX(-240);
 
-    // BONG HITBOX PRECISION FIX:
-    // Shorter height (300) ensures the gap is truly open.
-    // Top Bong Y offset moved to 300 to pull it HIGHER.
-    // Bot Bong Y offset moved to 100 to push it LOWER.
-    topBong.body.setSize(45, 300).setOffset(320, 300); 
-    botBong.body.setSize(45, 300).setOffset(320, 100);
+    // 4. THE "PURPLE BOX" FIX
+    // Width is skinny (40). Height is short (250).
+    // Offset X is pushed way right (450).
+    // Offset Y for Top Bong is pushed way UP (400) to hide it.
+    topBong.body.setSize(40, 250).setOffset(450, 400); 
+    botBong.body.setSize(40, 250).setOffset(450, 0);
 
     topBong.setDepth(8);
     botBong.setDepth(8);
@@ -166,8 +167,8 @@ function spawnBongs() {
         delay: 50, repeat: 30,
         callback: () => {
             if (botBong.active) {
-                smokeParticles.emitParticleAt(botBong.x, botBong.y + 15);
-                smokeParticles.emitParticleAt(topBong.x, topBong.y - 15);
+                smokeParticles.emitParticleAt(botBong.x, botBong.y + 20);
+                smokeParticles.emitParticleAt(topBong.x, topBong.y - 20);
             }
         }
     });
@@ -178,7 +179,7 @@ function startGame() {
     document.getElementById('start-menu').style.display = 'none';
     isStarted = true;
     player.body.allowGravity = true;
-    spawnTimer = this.time.addEvent({ delay: 1600, callback: spawnBongs, callbackScope: this, loop: true });
+    spawnTimer = this.time.addEvent({ delay: 1800, callback: spawnBongs, callbackScope: this, loop: true });
 }
 
 function gameOver() {
