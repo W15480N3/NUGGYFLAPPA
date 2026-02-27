@@ -146,12 +146,13 @@ function spawnBongs() {
     botBong.body.allowGravity = false;
     topBong.setVelocityX(-240);
     botBong.setVelocityX(-240);
+// --- CALIBRATION TEST ---
+    
+    // TOP BONG: Higher number = Moves closer to the top of the screen
+    topBong.body.setSize(40, 180).setOffset(340, 650); 
 
-    // HITBOX CALIBRATION
-    // Short height (180) to keep the gap wide.
-    // X Offset (340) to move them slightly left from last time.
-    topBong.body.setSize(40, 180).setOffset(340, 550); 
-    botBong.body.setSize(40, 180).setOffset(340, 250);
+    // BOTTOM BONG: Lower number = Moves closer to the gap/top of the bong
+    botBong.body.setSize(40, 180).setOffset(340, 100);
 
     topBong.setDepth(8);
     botBong.setDepth(8);
