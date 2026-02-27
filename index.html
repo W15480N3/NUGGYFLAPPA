@@ -148,11 +148,13 @@ function spawnBongs() {
     botBong.setVelocityX(-240);
 // --- CALIBRATION TEST ---
     
-    // TOP BONG: Higher number = Moves closer to the top of the screen
-    topBong.body.setSize(40, 180).setOffset(340, 650); 
+  // TOP BONG: We brought it back from 650 to 450 to make it visible again.
+    // If it's still too high, lower 450 to 400.
+    topBong.body.setSize(40, 180).setOffset(340, 450); 
 
-    // BOTTOM BONG: Lower number = Moves closer to the gap/top of the bong
-    botBong.body.setSize(40, 180).setOffset(340, 100);
+    // BOTTOM BONG: You said it moved the right way but needs to go down a hair.
+    // We increased 100 to 130 to push it down slightly.
+    botBong.body.setSize(40, 180).setOffset(340, 130);
 
     topBong.setDepth(8);
     botBong.setDepth(8);
