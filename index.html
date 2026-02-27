@@ -1,146 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>High Flyer Vegas</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
-    <style>
-        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
-        #ui-layer { position: absolute; width: 400px; height: 600px; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
-        .menu { pointer-events: auto; background: rgba(10, 30, 10, 0.95); border: 3px solid #fbbf24; border-radius: 20px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 30px #fbbf24; }
-        h1 { color: #fbbf24; margin: 0; font-size: 32px; text-shadow: 0 0 10px #fbbf24; }
-        button { background: #4ade80; color: #000; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 20px; }
-        .coupon { font-size: 30px; color: #fbbf24; margin: 15px 0; font-weight: bold; display: none; }
-    </style>
-</head>
-<body>
-
-    <div id="ui-layer">
-        <div id="start-menu" class="menu">
-            <h1>HIGH FLYER</h1>
-            <p>VIVA LAS VEGAS</p>
-            <button id="start-btn">START BLAZING</button>
-        </div>
-
-        <div id="game-over" class="menu" style="display: none;">
-            <h1>VEGAS BUSTED!</h1>
-            <p id="final-score">SCORE: 0</p>
-            <div id="coupon-code" class="coupon">CODE: VIVA420</div>
-            <button id="retry-btn">RETRY</button>
-        </div>
-    </div>
-
-<script>
-// --- AUDIO ENGINE (NO MP3s NEEDED) ---
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playSound(type) {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    const now = audioCtx.currentTime;
-    if (type === 'flap') {
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(150, now);
-        osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        osc.start(); osc.stop(now + 0.1);
-    } else if (type === 'score') {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(880, now);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-        osc.start(); osc.stop(now + 0.3);
-    } else if (type === 'crash') {
-        const bufferSize = audioCtx.sampleRate * 0.3;
-        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
-        const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
-        const noiseGain = audioCtx.createGain(); noise.connect(noiseGain);
-        noiseGain.connect(audioCtx.destination);
-        noiseGain.gain.setValueAtTime(0.2, now); noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-        noise.start();
-    }
-}
-
-// --- GAME CONFIG ---
-const config = {
-    type: Phaser.AUTO,
-    width: 400, height: 600,
-    physics: { default: 'arcade', arcade: { gravity: { y: 1300 }, debug: true } },
-    scene: { preload: preload, create: create, update: update }
-};
-
-let game = new Phaser.Game(config);
-let player, bongs, background, score = 0, isStarted = false, smokeParticles, spawnTimer;
-
-function preload() {
-    this.load.image('nug', 'nug.png'); 
-    this.load.image('bong', 'bong.png'); 
-    this.load.image('vegas', 'vegas.png'); 
-    let gfx = this.make.graphics();
-    gfx.fillStyle(0xffffff, 0.3); gfx.fillCircle(10, 10, 10);
-    gfx.generateTexture('smoke', 20, 20);
-}
-
-function create() {
-    // 1. STRETCHED VEGAS BACKGROUND
-    background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
-    background.width = 400;
-    background.height = 600;
-    background.setDisplaySize(400, 600);
-
-    // 2. PLAYER NUG
-    player = this.physics.add.sprite(100, 300, 'nug');
-    player.setScale(0.35);
-    // Move Nug Box Right: Increased to 350
-    player.body.setSize(60, 60);
-    player.body.setOffset(350, 120); 
-
-    player.body.allowGravity = false;
-    player.setDepth(10);
-
-    smokeParticles = this.add.particles(0, 0, 'smoke', {
-        scale: { start: 1, end: 6 }, alpha: { start: 0.4, end: 0 },
-        lifespan: 1200, speed: { min: 20, max: 40 }, frequency: 50
-    }).setDepth(5);
-
-    bongs = this.physics.add.group();
-
-    this.input.on('pointerdown', () => {
-        if (!isStarted) return;
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        player.setVelocityY(-450);
-        playSound('flap');
-        this.tweens.add({ targets: player, angle: -15, duration: 100, yoyo: true });
-    });
-
-    this.physics.add.collider(player, bongs, gameOver, null, this);
-    document.getElementById('start-btn').onclick = () => startGame.call(this);
-    document.getElementById('retry-btn').onclick = () => window.location.reload();
-}
-
-function update() {
-    // 3. SLOWER SCROLL (0.7)
-    background.tilePositionX += 0.7;
-
-    if (!isStarted) {
-        player.y = 300 + Math.sin(this.time.now / 300) * 15;
-        return;
-    }
-    if (player.y > 600 || player.y < 0) gameOver.call(this);
-    
-    bongs.children.entries.forEach(bong => {
-        if (bong.x < player.x && !bong.scored) {
-            score += 0.5;
-            if(Math.floor(score) > Math.floor(score - 0.5)) playSound('score');
-            bong.scored = true;
-        }
-        if (bong.x < -150) bong.destroy();
-    });
-}
-
 function spawnBongs() {
     if (!isStarted) return;
-    const gap = 280; // WIDER GAP for playability
+    const gap = 280; 
     const spawnX = 600;
     const randomY = Phaser.Math.Between(150, 450);
 
@@ -153,12 +13,17 @@ function spawnBongs() {
     topBong.setVelocityX(-240);
     botBong.setVelocityX(-240);
 
-    // 4. THE "PURPLE BOX" FIX
-    // Width is skinny (40). Height is short (250).
-    // Offset X is pushed way right (450).
-    // Offset Y for Top Bong is pushed way UP (400) to hide it.
-    topBong.body.setSize(40, 250).setOffset(450, 400); 
-    botBong.body.setSize(40, 250).setOffset(450, 0);
+    // --- PRECISION CALIBRATION ---
+    
+    // 1. We make the boxes even SHORTER (180) so they can't possibly touch.
+    // 2. We move the X-Offset LEFT to 380.
+    // 3. We adjust Y-Offsets to pull them away from the gap center.
+    
+    // TOP BONG: Increased Y-offset (450) pushes the box further UP toward the ceiling.
+    topBong.body.setSize(40, 180).setOffset(380, 450); 
+
+    // BOTTOM BONG: Increased Y-offset (150) pushes the box further DOWN toward the floor.
+    botBong.body.setSize(40, 180).setOffset(380, 150);
 
     topBong.setDepth(8);
     botBong.setDepth(8);
@@ -173,26 +38,3 @@ function spawnBongs() {
         }
     });
 }
-
-function startGame() {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    document.getElementById('start-menu').style.display = 'none';
-    isStarted = true;
-    player.body.allowGravity = true;
-    spawnTimer = this.time.addEvent({ delay: 1800, callback: spawnBongs, callbackScope: this, loop: true });
-}
-
-function gameOver() {
-    if (!isStarted) return;
-    isStarted = false;
-    playSound('crash');
-    this.physics.pause();
-    if (spawnTimer) spawnTimer.remove();
-    player.setTint(0xff3333);
-    document.getElementById('game-over').style.display = 'block';
-    document.getElementById('final-score').innerText = "SCORE: " + Math.floor(score);
-    if (score >= 10) document.getElementById('coupon-code').style.display = 'block';
-}
-</script>
-</body>
-</html>
