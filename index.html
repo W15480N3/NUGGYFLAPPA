@@ -32,15 +32,56 @@
     </div>
 
 <script>
+// --- SYNTHETIC SOUND ENGINE ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    const now = audioCtx.currentTime;
+
+    if (type === 'flap') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start();
+        osc.stop(now + 0.1);
+    } else if (type === 'score') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start();
+        osc.stop(now + 0.3);
+    } else if (type === 'crash') {
+        // Noise synthesis for crash
+        const bufferSize = audioCtx.sampleRate * 0.3;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseGain = audioCtx.createGain();
+        noise.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+        noiseGain.gain.setValueAtTime(0.2, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        noise.start();
+    }
+}
+
+// --- GAME ENGINE ---
 const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
     physics: { 
         default: 'arcade', 
-        arcade: { 
-            gravity: { y: 1300 }, 
-            debug: true // TURN TO FALSE AFTER TESTING HITBOXES
-        } 
+        arcade: { gravity: { y: 1300 }, debug: true } 
     },
     scene: { preload: preload, create: create, update: update }
 };
@@ -60,21 +101,20 @@ function preload() {
 }
 
 function create() {
-    // 1. Scrolling Background
+    // Background scaling fix
     background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
+    background.setTileScale(400 / 1920, 600 / 1080); // Adjusting for typical image ratio
 
-    // 2. The Nug Player
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
     
-    // PRECISION NUG HITBOX: Shrink it so you don't die by "air"
+    // NUG HITBOX: Pushed right
     player.body.setSize(80, 80);
-    player.body.setOffset(60, 60); 
+    player.body.setOffset(210, 120); 
 
     player.body.allowGravity = false;
     player.setDepth(10);
 
-    // 3. Smoke Particles (Moved to depth 5, behind bongs/nug)
     smokeParticles = this.add.particles(0, 0, 'smoke', {
         scale: { start: 1, end: 6 },
         alpha: { start: 0.4, end: 0 },
@@ -85,10 +125,11 @@ function create() {
 
     bongs = this.physics.add.group();
 
-    // 4. Global Input
     this.input.on('pointerdown', () => {
         if (!isStarted) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
         player.setVelocityY(-450);
+        playSound('flap');
         this.tweens.add({ targets: player, angle: -15, duration: 100, yoyo: true });
     });
 
@@ -110,7 +151,8 @@ function update() {
 
     bongs.children.entries.forEach(bong => {
         if (bong.x < player.x && !bong.scored) {
-            score += 0.5; // Two bongs = 1 point
+            score += 0.5;
+            if(Math.floor(score) > Math.floor(score - 0.5)) playSound('score');
             bong.scored = true;
         }
         if (bong.x < -150) bong.destroy();
@@ -120,15 +162,12 @@ function update() {
 function spawnBongs() {
     if (!isStarted) return;
 
-    const gap = 230; // Wider gap for better playability
+    const gap = 230; 
     const spawnX = 550;
     const randomY = Phaser.Math.Between(150, 450);
 
-    // Top Bong
     const topBong = bongs.create(spawnX, randomY - (gap / 2), 'bong').setOrigin(0.5, 1);
     topBong.setFlipY(true);
-    
-    // Bottom Bong
     const botBong = bongs.create(spawnX, randomY + (gap / 2), 'bong').setOrigin(0.5, 0);
 
     topBong.body.allowGravity = false;
@@ -136,22 +175,18 @@ function spawnBongs() {
     topBong.setVelocityX(-250);
     botBong.setVelocityX(-250);
 
-    // PRECISION BONG HITBOXES
-    // We make the kill-zone a skinny strip in the center of the image
-    // Adjust setOffset(X) if the purple box is too far left/right
-    topBong.body.setSize(50, 480).setOffset(75, 0); 
-    botBong.body.setSize(50, 480).setOffset(75, 0);
+    // BONG HITBOXES: Pushed right to center on the neck
+    topBong.body.setSize(50, 480).setOffset(220, 0); 
+    botBong.body.setSize(50, 480).setOffset(220, 0);
 
     topBong.setDepth(8);
     botBong.setDepth(8);
 
-    // Dynamic Smoke Trails
     this.time.addEvent({
         delay: 50,
         repeat: 30,
         callback: () => {
             if (botBong.active) {
-                // Smoke spawns exactly where the mouthpieces meet the gap
                 smokeParticles.emitParticleAt(botBong.x, botBong.y + 5);
                 smokeParticles.emitParticleAt(topBong.x, topBong.y - 5);
             }
@@ -160,24 +195,20 @@ function spawnBongs() {
 }
 
 function startGame() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     document.getElementById('start-menu').style.display = 'none';
     isStarted = true;
     player.body.allowGravity = true;
-    spawnTimer = this.time.addEvent({ 
-        delay: 1500, 
-        callback: spawnBongs, 
-        callbackScope: this, 
-        loop: true 
-    });
+    spawnTimer = this.time.addEvent({ delay: 1500, callback: spawnBongs, callbackScope: this, loop: true });
 }
 
 function gameOver() {
     if (!isStarted) return;
     isStarted = false;
+    playSound('crash');
     this.physics.pause();
     if (spawnTimer) spawnTimer.remove();
     player.setTint(0xff3333);
-    
     document.getElementById('game-over').style.display = 'block';
     document.getElementById('final-score').innerText = "SCORE: " + Math.floor(score);
     if (score >= 10) document.getElementById('coupon-code').style.display = 'block';
