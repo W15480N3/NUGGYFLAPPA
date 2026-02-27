@@ -7,8 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
-        #ui-layer { position: absolute; width: 400px; height: 600px; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 10; }
-        .menu { pointer-events: auto; background: rgba(10, 30, 10, 0.9); border: 3px solid #fbbf24; border-radius: 20px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 30px #fbbf24; }
+        #ui-layer { position: absolute; width: 400px; height: 600px; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
+        .menu { pointer-events: auto; background: rgba(10, 30, 10, 0.95); border: 3px solid #fbbf24; border-radius: 20px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 30px #fbbf24; }
         h1 { color: #fbbf24; margin: 0; font-size: 32px; text-shadow: 0 0 10px #fbbf24; }
         button { background: #4ade80; color: #000; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 20px; }
         .coupon { font-size: 30px; color: #fbbf24; margin: 15px 0; font-weight: bold; display: none; }
@@ -24,7 +24,7 @@
         </div>
 
         <div id="game-over" class="menu" style="display: none;">
-            <h1>BUSTED!</h1>
+            <h1>VEGAS BUSTED!</h1>
             <p id="final-score">SCORE: 0</p>
             <div id="coupon-code" class="coupon">CODE: VIVA420</div>
             <button id="retry-btn">RETRY</button>
@@ -35,7 +35,13 @@
 const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
-    physics: { default: 'arcade', arcade: { gravity: { y: 1300 }, debug: false } },
+    physics: { 
+        default: 'arcade', 
+        arcade: { 
+            gravity: { y: 1300 }, 
+            debug: true // TURN TO FALSE AFTER TESTING HITBOXES
+        } 
+    },
     scene: { preload: preload, create: create, update: update }
 };
 
@@ -47,7 +53,6 @@ function preload() {
     this.load.image('bong', 'bong.png'); 
     this.load.image('vegas', 'vegas.png'); 
 
-    // Create a fuzzy smoke puff
     let gfx = this.make.graphics();
     gfx.fillStyle(0xffffff, 0.3);
     gfx.fillCircle(10, 10, 10);
@@ -55,28 +60,32 @@ function preload() {
 }
 
 function create() {
-    // Scrolling Vegas Background
+    // 1. Scrolling Background
     background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
 
-    // Player (The Levitating Nug)
+    // 2. The Nug Player
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
-    player.setCircle(100, 50, 50);
+    
+    // PRECISION NUG HITBOX: Shrink it so you don't die by "air"
+    player.body.setSize(80, 80);
+    player.body.setOffset(60, 60); 
+
     player.body.allowGravity = false;
     player.setDepth(10);
 
-    // Smoke System - High Volume
+    // 3. Smoke Particles (Moved to depth 5, behind bongs/nug)
     smokeParticles = this.add.particles(0, 0, 'smoke', {
         scale: { start: 1, end: 6 },
-        alpha: { start: 0.5, end: 0 },
-        lifespan: 1500,
-        speed: { min: 30, max: 60 },
-        frequency: 40
+        alpha: { start: 0.4, end: 0 },
+        lifespan: 1200,
+        speed: { min: 20, max: 40 },
+        frequency: 50
     }).setDepth(5);
 
     bongs = this.physics.add.group();
 
-    // Input
+    // 4. Global Input
     this.input.on('pointerdown', () => {
         if (!isStarted) return;
         player.setVelocityY(-450);
@@ -90,7 +99,7 @@ function create() {
 }
 
 function update() {
-    background.tilePositionX += 1.5; // Scroll speed
+    background.tilePositionX += 1.2;
 
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 300) * 15;
@@ -99,50 +108,53 @@ function update() {
 
     if (player.y > 600 || player.y < 0) gameOver.call(this);
 
-    // Scored logic
     bongs.children.entries.forEach(bong => {
         if (bong.x < player.x && !bong.scored) {
             score += 0.5; // Two bongs = 1 point
             bong.scored = true;
         }
-        if (bong.x < -100) bong.destroy();
+        if (bong.x < -150) bong.destroy();
     });
 }
 
 function spawnBongs() {
     if (!isStarted) return;
 
-    const gap = 210; 
-    const spawnX = 500;
+    const gap = 230; // Wider gap for better playability
+    const spawnX = 550;
     const randomY = Phaser.Math.Between(150, 450);
 
-    // TOP BONG (Mouthpiece facing down)
+    // Top Bong
     const topBong = bongs.create(spawnX, randomY - (gap / 2), 'bong').setOrigin(0.5, 1);
     topBong.setFlipY(true);
     
-    // BOTTOM BONG (Upright)
+    // Bottom Bong
     const botBong = bongs.create(spawnX, randomY + (gap / 2), 'bong').setOrigin(0.5, 0);
 
     topBong.body.allowGravity = false;
     botBong.body.allowGravity = false;
-    topBong.setVelocityX(-240);
-    botBong.setVelocityX(-240);
+    topBong.setVelocityX(-250);
+    botBong.setVelocityX(-250);
 
-    // Tighten Hitboxes (Optional: adjust if art is wide)
-    topBong.body.setSize(80, 450).setOffset(10, 0);
-    botBong.body.setSize(80, 450).setOffset(10, 0);
+    // PRECISION BONG HITBOXES
+    // We make the kill-zone a skinny strip in the center of the image
+    // Adjust setOffset(X) if the purple box is too far left/right
+    topBong.body.setSize(50, 480).setOffset(75, 0); 
+    botBong.body.setSize(50, 480).setOffset(75, 0);
 
-    // Smoke from the Mouthpieces
-    // For top bong, mouthpiece is at the bottom (randomY - gap/2)
-    // For bottom bong, mouthpiece is at the top (randomY + gap/2)
-    
-    // Bottom Bong Smoke
+    topBong.setDepth(8);
+    botBong.setDepth(8);
+
+    // Dynamic Smoke Trails
     this.time.addEvent({
         delay: 50,
-        repeat: 20,
+        repeat: 30,
         callback: () => {
-            if (botBong.active) smokeParticles.emitParticleAt(botBong.x, botBong.y);
-            if (topBong.active) smokeParticles.emitParticleAt(topBong.x, topBong.y);
+            if (botBong.active) {
+                // Smoke spawns exactly where the mouthpieces meet the gap
+                smokeParticles.emitParticleAt(botBong.x, botBong.y + 5);
+                smokeParticles.emitParticleAt(topBong.x, topBong.y - 5);
+            }
         }
     });
 }
@@ -151,14 +163,21 @@ function startGame() {
     document.getElementById('start-menu').style.display = 'none';
     isStarted = true;
     player.body.allowGravity = true;
-    spawnTimer = this.time.addEvent({ delay: 1500, callback: spawnBongs, callbackScope: this, loop: true });
+    spawnTimer = this.time.addEvent({ 
+        delay: 1500, 
+        callback: spawnBongs, 
+        callbackScope: this, 
+        loop: true 
+    });
 }
 
 function gameOver() {
     if (!isStarted) return;
     isStarted = false;
     this.physics.pause();
+    if (spawnTimer) spawnTimer.remove();
     player.setTint(0xff3333);
+    
     document.getElementById('game-over').style.display = 'block';
     document.getElementById('final-score').innerText = "SCORE: " + Math.floor(score);
     if (score >= 10) document.getElementById('coupon-code').style.display = 'block';
