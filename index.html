@@ -60,9 +60,7 @@ const config = {
         default: 'arcade', 
         arcade: { 
             gravity: { y: 1200 }, 
-            debug: true, // *** DEBUG IS NOW ON ***
-            debugShowBody: true,
-            debugShowStaticBody: true
+            debug: true 
         } 
     }, 
     scene: { preload, create, update } 
@@ -117,8 +115,6 @@ function drawScoreBox(xOffset = 0, yOffset = 0) {
     scoreBox.clear();
     scoreBox.lineStyle(2, 0x4ade80, 0.8);
     scoreBox.strokeRect(20 + xOffset, 20 + yOffset, scoreText.width + 20, scoreText.height + 20);
-    scoreBox.fillStyle(0x4ade80, 0.5);
-    scoreBox.fillRect(20 + xOffset, 20 + yOffset, 5, 5);
 }
 
 function triggerGlitch() { 
@@ -136,7 +132,6 @@ function update() {
     scoreText.setX(Phaser.Math.Linear(scoreText.x, 30, 0.15));
     drawScoreBox(scoreText.x - 30, scoreText.y - 30);
 
-    if (this.time.now % 1800 < 40) triggerGlitch();
     if (this.time.now % 60 < 20) smokeParticles.emitParticleAt(player.x - 25, player.y + 5);
     if (player.y > 600 || player.y < 0) gameOver.call(this);
 
@@ -146,25 +141,40 @@ function update() {
             if(Math.floor(score) > Math.floor(score - 0.5)) { 
                 scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); 
                 playSfx('point'); 
-                triggerGlitch(); 
             } 
             bong.scored = true; 
         }
-        if (bong.x > 0 && bong.x < 420 && this.time.now % 180 < 20) smokeParticles.emitParticleAt(bong.x, bong.y + (bong.flipY ? -5 : 5));
         if (bong.x < -100) bong.destroy();
     });
-    lighters.getChildren().forEach((l, i) => { let f = flames.getChildren()[i]; l.y = l.startY + Math.sin(this.time.now / 300) * 40; if (f) { f.x = l.x - 45; f.y = l.y; } if (l.x < -100) { l.destroy(); if (f) f.destroy(); } });
+
+    lighters.getChildren().forEach((l, i) => { 
+        let f = flames.getChildren()[i]; 
+        l.y = l.startY + Math.sin(this.time.now / 300) * 40; 
+        if (f) { f.x = l.x - 45; f.y = l.y; } 
+        if (l.x < -100) { l.destroy(); if (f) f.destroy(); } 
+    });
+}
+
+function spawnLighter() {
+    if (!isStarted) return;
+    let y = Phaser.Math.Between(150, 450);
+    let l = lighters.create(500, y, 'lighter').setScale(0.08).setDepth(8);
+    l.body.allowGravity = false; l.setVelocityX(-180); l.startY = y;
+    // Circular hitbox for the lighter body
+    l.body.setCircle(20).setOffset(l.width*0.35, l.height*0.35);
+    
+    let f = flames.create(l.x - 45, y, 'flame').setScale(0.08).setDepth(9);
+    f.body.allowGravity = false; f.setVelocityX(-180);
+    this.tweens.add({ targets: f, alpha: 0.2, duration: 50, yoyo: true, repeat: -1 });
 }
 
 function spawnBongs() {
     if (!isStarted) return;
     const y = Phaser.Math.Between(150, 450);
-    const top = bongs.create(550, y - 145, 'bong').setOrigin(0.5, 1).setFlipY(true).setDepth(7);
-    const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0).setDepth(7);
+    const top = bongs.create(550, y - 145, 'bong').setOrigin(0.5, 1).setFlipY(true);
+    const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
-    
-    // CURRENT HITBOXES (Neck area)
     top.body.setSize(55, 380).setOffset(330, 0); 
     bot.body.setSize(55, 380).setOffset(330, 0);
 }
@@ -177,7 +187,8 @@ function startGame() {
     if (audioCtx.state === 'suspended') audioCtx.resume(); 
     isStarted = true; player.body.allowGravity = true; 
     document.getElementById('start-menu').style.display = 'none'; 
-    this.time.addEvent({ delay: 2200, callback: spawnBongs, loop: true }); 
+    this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); 
+    this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); 
 }
 
 function gameOver() { 
