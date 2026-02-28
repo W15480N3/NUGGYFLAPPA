@@ -110,13 +110,27 @@ function update() {
     drawScoreBox(scoreText.x - 30, scoreText.y - 30);
     if (this.time.now % 60 < 20) smokeParticles.emitParticleAt(player.x - 25, player.y + 5);
     if (player.y > 600 || player.y < 0) gameOver.call(this);
+    
     bongs.getChildren().forEach(bong => {
         if (bong.x < player.x && !bong.scored) { score += 0.5; if(Math.floor(score) > Math.floor(score - 0.5)) { scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); playSfx('point'); } bong.scored = true; }
         if (bong.x < -100) bong.destroy();
     });
+
     lighters.getChildren().forEach((l, i) => { 
-        let f = flames.getChildren()[i]; l.y = l.startY + Math.sin(this.time.now / 300) * 40; 
-        if (f) { f.x = l.x - 45; f.y = l.y; } 
+        let f = flames.getChildren()[i]; 
+        
+        // --- SPIN ACTION ---
+        l.angle += 3; // Rotation speed
+        
+        l.y = l.startY + Math.sin(this.time.now / 300) * 40; 
+        
+        if (f) { 
+            // Flame orbits the lighter as it spins
+            let rad = Phaser.Math.DegToRad(l.angle + 180);
+            f.x = l.x + Math.cos(rad) * 45;
+            f.y = l.y + Math.sin(rad) * 45;
+            f.angle = l.angle;
+        } 
         if (l.x < -100) { l.destroy(); if (f) f.destroy(); } 
     });
 }
@@ -126,8 +140,10 @@ function spawnLighter() {
     let y = Phaser.Math.Between(150, 450);
     let l = lighters.create(500, y, 'lighter').setScale(0.08).setDepth(8);
     l.body.allowGravity = false; l.setVelocityX(-180); l.startY = y;
-    // RE-CENTERED AND ENLARGED
-    l.body.setCircle(120).setOffset(150, 150); 
+    
+    // Circular hitbox centered on the spinning mass
+    l.body.setCircle(130).setOffset(150, 150); 
+    
     let f = flames.create(l.x - 45, y, 'flame').setScale(0.08).setDepth(9);
     this.tweens.add({ targets: f, alpha: 0.2, duration: 50, yoyo: true, repeat: -1 }); 
 }
