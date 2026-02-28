@@ -65,7 +65,7 @@ function playSfx(type) {
 const muteBtn = document.getElementById('mute-btn');
 muteBtn.onclick = () => { isMuted = !isMuted; muteBtn.innerText = isMuted ? '🔇' : '🔊'; };
 
-let score = 0, isStarted = false, highScore = localStorage.getItem('hoppyNugBest') || 0, scoreMilestone = false;
+let score = 0, isStarted = false, highScore = localStorage.getItem('hoppyNugBest') || 0;
 document.getElementById('best-display').innerText = "RECORD: " + highScore;
 
 const config = {
@@ -99,13 +99,12 @@ function create() {
             starGroup.add(star);
         }, loop: true });
 
-    // Single Particle Manager for everything
     smokeParticles = this.add.particles(0, 0, 'smoke_puff', {
-        scale: { start: 0.4, end: 1.8 },
-        alpha: { start: 0.3, end: 0 },
-        lifespan: 800,
-        speedX: { min: -120, max: -180 },
-        frequency: -1 // Manual emission only to prevent "streaking"
+        scale: { start: 0.3, end: 1.2 },
+        alpha: { start: 0.25, end: 0 },
+        lifespan: 700,
+        speedX: { min: -100, max: -150 },
+        frequency: -1 
     }).setDepth(5);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
@@ -137,9 +136,9 @@ function update() {
     starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
 
-    // Manual Nug Trail Emission
+    // Manual Nug Trail
     if (this.time.now % 60 < 20) {
-        smokeParticles.emitParticleAt(player.x - 25, player.y + 10);
+        smokeParticles.emitParticleAt(player.x - 25, player.y + 5);
     }
 
     if (player.y > 600 || player.y < 0) gameOver.call(this);
@@ -152,10 +151,14 @@ function update() {
             }
             bong.scored = true;
         }
-        // FIXED BONG SMOKE: Emit puffs only while on screen, using shared manager
-        if (bong.x > 0 && bong.x < 450 && this.time.now % 150 < 20) {
-            smokeParticles.emitParticleAt(bong.x, bong.y + (bong.flipY ? 20 : -20));
+        
+        // SMOKE TIP ALIGNMENT FIX
+        // We check if it's the top or bottom bong and apply a specific offset to the tip
+        if (bong.x > 0 && bong.x < 420 && this.time.now % 180 < 20) {
+            let offsetY = bong.flipY ? -5 : 5; // Top bong vs Bottom bong tip
+            smokeParticles.emitParticleAt(bong.x, bong.y + offsetY);
         }
+        
         if (bong.x < -100) bong.destroy();
     });
 
@@ -180,6 +183,7 @@ function spawnLighter() {
 function spawnBongs() {
     if (!isStarted) return;
     const y = Phaser.Math.Between(150, 450);
+    // Bongs are now spawned exactly 145px away from the center gap
     const top = bongs.create(550, y - 145, 'bong').setOrigin(0.5, 1).setFlipY(true).setDepth(7);
     const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0).setDepth(7);
     top.body.allowGravity = false; bot.body.allowGravity = false;
