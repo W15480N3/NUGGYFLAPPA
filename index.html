@@ -4,15 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>HoppyNug - 702wish</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Arial Black', sans-serif; }
+        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
+        
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
-        .menu { pointer-events: auto; background: rgba(0, 0, 0, 0.95); border: 2px solid #4ade80; border-radius: 15px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 20px rgba(74, 222, 128, 0.2); }
-        input#player-name { background: #111; border: 2px solid #4ade80; color: #fff; padding: 10px; font-size: 18px; border-radius: 5px; text-align: center; margin: 15px 0; width: 80%; outline: none; font-family: 'Arial Black', sans-serif; }
-        button { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; width: 100%; }
-        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #4ade80; font-size: 24px; cursor: pointer; z-index: 1000; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+        
+        /* Spiced up Menu */
+        .menu { 
+            pointer-events: auto; 
+            background: rgba(0, 15, 5, 0.9); 
+            border: 3px solid #4ade80; 
+            border-radius: 20px; 
+            padding: 40px; 
+            color: white; 
+            text-align: center; 
+            box-shadow: 0 0 30px rgba(74, 222, 128, 0.4), inset 0 0 15px rgba(74, 222, 128, 0.2);
+            text-transform: uppercase;
+        }
+
+        input#player-name { 
+            background: #000; 
+            border: 2px solid #4ade80; 
+            color: #4ade80; 
+            padding: 12px; 
+            font-size: 20px; 
+            border-radius: 8px; 
+            text-align: center; 
+            margin: 20px 0; 
+            width: 85%; 
+            outline: none; 
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 2px;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.2);
+        }
+
+        button { 
+            background: #4ade80; 
+            color: #000; 
+            border: none; 
+            padding: 15px; 
+            font-size: 22px; 
+            font-weight: 900; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            width: 100%; 
+            font-family: 'Orbitron', sans-serif;
+            transition: 0.2s;
+            box-shadow: 0 4px 0 #2d864d;
+        }
+        button:active { transform: translateY(3px); box-shadow: 0 1px 0 #2d864d; }
+
+        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #4ade80; font-size: 24px; cursor: pointer; z-index: 1000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #4ade80; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -21,16 +67,17 @@
 
     <div id="ui-layer">
         <div id="start-menu" class="menu">
-            <h1 style="color: #4ade80; margin:0; font-size: 42px;">HoppyNug</h1>
-            <input type="text" id="player-name" placeholder="ENTER NAME" maxlength="10">
-            <p id="best-display" style="color: #888; margin: 10px 0; font-size: 14px;">RECORD: 0</p>
-            <button id="start-btn">IGNITE</button>
+            <h1 style="color: #4ade80; margin:0; font-size: 46px; letter-spacing: -2px; font-weight: 900;">HOPPYNUG</h1>
+            <div style="color: #fbbf24; font-size: 10px; letter-spacing: 5px; margin-bottom: 20px;">702WISH SYSTEM v2.6</div>
+            <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
+            <p id="best-display" style="color: #666; margin: 10px 0; font-size: 14px;">SYS_RECORD: 0</p>
+            <button id="start-btn">ENGAGE</button>
         </div>
 
         <div id="game-over" class="menu" style="display: none;">
-            <h1 style="color: #ff3333; margin:0;">WASTED</h1>
-            <p id="final-score-text" style="font-size: 24px; margin: 10px 0;">SCORE: 0</p>
-            <button id="retry-btn">RE-UP</button>
+            <h1 style="color: #ff3333; margin:0; font-size: 40px;">CRITICAL FAILURE</h1>
+            <p id="final-score-text" style="font-size: 28px; margin: 20px 0; color: #4ade80;">DATA_COLLECTED: 0</p>
+            <button id="retry-btn">REBOOT</button>
         </div>
     </div>
 
@@ -70,7 +117,7 @@ let highScore = localStorage.getItem('hoppyNugBest') || 0;
 
 const nameInput = document.getElementById('player-name');
 nameInput.value = playerName;
-document.getElementById('best-display').innerText = "RECORD: " + highScore;
+document.getElementById('best-display').innerText = "SYS_RECORD: " + highScore;
 
 const config = {
     type: Phaser.AUTO,
@@ -81,7 +128,7 @@ const config = {
 };
 
 let game = new Phaser.Game(config);
-let player, bongs, lighters, flames, smokeParticles, starGroup, scoreText, glitchTimer = 0;
+let player, bongs, lighters, flames, smokeParticles, starGroup, scoreText;
 
 function preload() {
     this.load.image('nug', 'nug.png'); 
@@ -109,14 +156,16 @@ function create() {
     player.body.setCircle(50, 280, 90); 
     player.body.allowGravity = false;
 
-    // --- GLITCH UI SETUP ---
-    scoreText = this.add.text(20, 20, '', { 
-        fontSize: '28px', 
+    // --- SPICED UP UI TEXT ---
+    scoreText = this.add.text(20, 25, '', { 
+        fontSize: '22px', 
         fill: '#4ade80', 
-        fontFamily: 'Arial Black',
-        stroke: '#000',
-        strokeThickness: 4
+        fontFamily: 'Orbitron', // Using Custom Font
+        fontWeight: '900'
     }).setDepth(100);
+    
+    // Add Neon Glow to Name
+    scoreText.setShadow(0, 0, '#4ade80', 10, true, true);
 
     bongs = this.physics.add.group();
     lighters = this.physics.add.group();
@@ -128,7 +177,7 @@ function create() {
         player.setVelocityY(-410); playSfx('jump');
         player.setTexture('nug_active');
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); });
-        triggerGlitch(); // Jitter name on jump
+        triggerGlitch(); 
     });
 
     this.physics.add.overlap(player, bongs, gameOver, null, this);
@@ -141,9 +190,9 @@ function create() {
 
 function triggerGlitch() {
     if (!isStarted) return;
-    scoreText.setX(20 + Phaser.Math.Between(-3, 3));
-    scoreText.setAlpha(Phaser.Math.FloatBetween(0.5, 1));
-    if (Math.random() > 0.8) scoreText.setFill('#ff3333');
+    scoreText.setX(20 + Phaser.Math.Between(-4, 4));
+    scoreText.setAlpha(Phaser.Math.FloatBetween(0.6, 1));
+    if (Math.random() > 0.85) scoreText.setFill('#ff3333');
     else scoreText.setFill('#4ade80');
 }
 
@@ -151,9 +200,8 @@ function update() {
     starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
 
-    // Glitch decay
-    scoreText.setX(Phaser.Math.Linear(scoreText.x, 20, 0.1));
-    if (this.time.now % 2000 < 50) triggerGlitch(); // Periodic glitch
+    scoreText.setX(Phaser.Math.Linear(scoreText.x, 20, 0.15));
+    if (this.time.now % 1800 < 40) triggerGlitch(); 
 
     if (this.time.now % 60 < 20) smokeParticles.emitParticleAt(player.x - 25, player.y + 5);
     if (player.y > 600 || player.y < 0) gameOver.call(this);
@@ -162,7 +210,7 @@ function update() {
         if (bong.x < player.x && !bong.scored) {
             score += 0.5;
             if(Math.floor(score) > Math.floor(score - 0.5)) {
-                scoreText.setText(`${playerName.toUpperCase()} >> ${Math.floor(score)}`);
+                scoreText.setText(`${playerName.toUpperCase()} // CHRG_${Math.floor(score)}`);
                 playSfx('point');
                 triggerGlitch();
             }
@@ -199,13 +247,12 @@ function spawnBongs() {
     const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0).setDepth(7);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
-    top.body.setSize(55, 380).setOffset(330, 0); bot.body.setSize(55, 380).setOffset(330, 0);
 }
 
 function startGame() { 
-    playerName = nameInput.value || "USER_1";
+    playerName = nameInput.value || "PILOT_01";
     localStorage.setItem('hoppyNugName', playerName);
-    scoreText.setText(`${playerName.toUpperCase()} >> 0`);
+    scoreText.setText(`${playerName.toUpperCase()} // CHRG_0`);
     if (audioCtx.state === 'suspended') audioCtx.resume(); 
     isStarted = true; player.body.allowGravity = true; 
     document.getElementById('start-menu').style.display = 'none'; 
@@ -220,7 +267,7 @@ function gameOver() {
     let final = Math.floor(score); 
     if (final > highScore) localStorage.setItem('hoppyNugBest', final); 
     document.getElementById('game-over').style.display = 'block'; 
-    document.getElementById('final-score-text').innerText = "SCORE: " + final; 
+    document.getElementById('final-score-text').innerText = "DATA_LOGGED: " + final; 
 }
 </script>
 </body>
