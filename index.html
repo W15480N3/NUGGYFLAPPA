@@ -43,7 +43,13 @@ const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
     backgroundColor: '#000000',
-    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: false } },
+    physics: { 
+        default: 'arcade', 
+        arcade: { 
+            gravity: { y: 1200 }, 
+            debug: false // *** WEIRD WHITE LINE FIXED (TURNED OFF DEBUG) ***
+        } 
+    },
     scene: { preload: preload, create: create, update: update }
 };
 
@@ -66,7 +72,7 @@ function preload() {
 }
 
 function create() {
-    // Sporadic Stars
+    // Stars
     starGroup = this.add.group();
     this.time.addEvent({
         delay: 400,
@@ -79,18 +85,18 @@ function create() {
         loop: true
     });
 
-    // Particle Manager for Horizontal Smoke
+    // Horizontal Smoke Trail
     smokeParticles = this.add.particles(0, 0, 'smoke_puff', {
         scale: { start: 0.4, end: 1.8 },
         alpha: { start: 0.3, end: 0 },
         lifespan: 1000,
-        speedX: { min: -100, max: -150 }, // Force it to move left behind the nug
+        speedX: { min: -100, max: -150 },
         speedY: { min: -10, max: 10 },
         frequency: 50
     }).setDepth(5);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35);
-    player.body.setCircle(55, 275, 85); // Adjusted circle hitbox
+    player.body.setCircle(55, 275, 85); 
     player.body.allowGravity = false;
 
     scoreText = this.add.text(20, 20, '0', { fontSize: '42px', fill: '#4ade80', fontFamily: 'Arial Black' }).setAlpha(0.3).setDepth(100);
@@ -138,7 +144,11 @@ function update() {
     lighters.getChildren().forEach((l, i) => {
         let f = flames.getChildren()[i];
         l.y = l.startY + Math.sin(this.time.now / 300) * 40;
-        if (f) { f.x = l.x - 20; f.y = l.y; }
+        if (f) { 
+            // *** FLAME POSITIONING & FLICKER (Offset the flame to the "nose" of the scaled asset) ***
+            f.x = l.x - 45; // Move flame farther out
+            f.y = l.y; 
+        }
         if (l.x < -100) { l.destroy(); if (f) f.destroy(); }
     });
 }
@@ -152,10 +162,20 @@ function spawnLighter() {
     l.startY = y;
     l.body.setCircle(20).setOffset(l.width*0.35, l.height*0.35);
 
-    let f = flames.create(l.x - 20, y, 'flame').setScale(0.08);
+    let f = flames.create(l.x - 45, y, 'flame').setScale(0.08); // Initial spawn with correct offset
     f.body.allowGravity = false;
     f.setVelocityX(-200);
     f.body.setSize(10,10);
+    f.setDepth(6); // Ensure flame is visible on top
+
+    // *** NEW: FLAME FLICKER TWEEN (Rapid alpha pulse) ***
+    this.tweens.add({
+        targets: f,
+        alpha: 0.3, // Drop to 30% brightness
+        duration: 60, // Rapid pulse
+        yoyo: true, // Pulse back up
+        repeat: -1 // Loop infinitely
+    });
 }
 
 function spawnBongs() {
@@ -185,7 +205,8 @@ function startGame() {
     player.body.allowGravity = true;
     document.getElementById('start-menu').style.display = 'none';
     this.time.addEvent({ delay: 2000, callback: spawnBongs, callbackScope: this, loop: true });
-    this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true });
+    // Increase lighter spawn rate slightly
+    this.time.addEvent({ delay: 4500, callback: spawnLighter, callbackScope: this, loop: true });
 }
 
 function gameOver() {
