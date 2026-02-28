@@ -14,7 +14,7 @@
         canvas {
             width: 100vw !important;
             height: 100vh !important;
-            object-fit: fill; /* This stretches the canvas to the browser edges */
+            object-fit: contain; /* Keeps the game 400x600 centered on your screen */
         }
         #ui-layer { 
             position: absolute; width: 100%; height: 100%;
@@ -49,7 +49,6 @@
     </div>
 
 <script>
-// --- AUDIO ENGINE ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
     const osc = audioCtx.createOscillator();
@@ -78,7 +77,6 @@ function playSound(type) {
     }
 }
 
-// --- GAME CONFIG ---
 const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
@@ -93,21 +91,27 @@ let player, bongs, background, score = 0, isStarted = false, smokeParticles, spa
 function preload() {
     this.load.image('nug', 'nug.png'); 
     this.load.image('bong', 'bong.png'); 
-    this.load.image('vegas', 'vegas.png'); 
+    // CACHE BUSTER: Forces GitHub to load the NEW image
+    this.load.image('vegas', 'vegas.png?v=' + Date.now()); 
+    
     let gfx = this.make.graphics();
     gfx.fillStyle(0xffffff, 0.3); gfx.fillCircle(10, 10, 10);
     gfx.generateTexture('smoke', 20, 20);
 }
 
 function create() {
-    // REPLACED TILESPRITE WITH STRETCHED IMAGE
-    background = this.add.image(0, 0, 'vegas').setOrigin(0, 0);
-    background.setDisplaySize(400, 600); // Forces the image to fill the canvas exactly
+    // TILESPRITE SETUP: For the scrolling sideways effect
+    background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
+    
+    // SCALE FIX: Matches the image height to the game height (600px) 
+    // without stretching the width, so it scrolls naturally.
+    let scaleFactor = 600 / background.height;
+    background.tileScaleY = scaleFactor;
+    background.tileScaleX = scaleFactor;
 
-    // PLAYER NUG: Jumbo 180x180 Hitbox
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
-    player.body.setSize(180, 180);
+    player.body.setSize(180, 180); // JUMBO HITBOX
     player.body.setOffset(240, 50); 
 
     player.body.allowGravity = false;
@@ -139,7 +143,9 @@ function create() {
 }
 
 function update() {
-    // Note: Background no longer scrolls because it is a single stretched image
+    // SCROLLING SPEED
+    background.tilePositionX += 2; 
+
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 300) * 15;
         return;
@@ -174,7 +180,6 @@ function spawnBongs() {
     topBong.setVelocityX(-240);
     botBong.setVelocityX(-240);
 
-    // Hitbox Baseline
     topBong.body.setSize(40, 180).setOffset(340, 150); 
     botBong.body.setSize(40, 180).setOffset(340, 50);
 
