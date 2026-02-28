@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>HoppyNug Debug - 702wish</title>
+    <title>HoppyNug - 702wish</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -52,19 +52,8 @@ nameInput.value = playerName;
 document.getElementById('best-display').innerText = "PERSONAL BEST: " + highScore;
 
 const config = { 
-    type: Phaser.AUTO, 
-    width: 400, 
-    height: 600, 
-    backgroundColor: '#000000', 
-    physics: { 
-        default: 'arcade', 
-        arcade: { 
-            gravity: { y: 1200 }, 
-            debug: true, // *** DEBUG ON FOR VERIFICATION ***
-            debugShowBody: true,
-            debugShowStaticBody: true
-        } 
-    }, 
+    type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000000', 
+    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: true } }, 
     scene: { preload, create, update } 
 };
 
@@ -72,7 +61,9 @@ let game = new Phaser.Game(config);
 let player, bongs, lighters, flames, smokeParticles, starGroup, scoreText, scoreBox;
 
 function preload() {
-    this.load.image('nug', 'nug.png'); this.load.image('nug_active', 'nug_active.png'); this.load.image('bong', 'bong.png'); this.load.image('lighter', 'lighter.png'); this.load.image('flame', 'flame.png');
+    this.load.image('nug', 'nug.png'); this.load.image('nug_active', 'nug_active.png'); 
+    this.load.image('bong', 'bong.png'); this.load.image('lighter', 'lighter.png'); 
+    this.load.image('flame', 'flame.png');
     let g = this.make.graphics(); g.fillStyle(0xffffff, 0.4); g.fillCircle(8, 8, 8); g.generateTexture('smoke_puff', 16, 16);
     let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2); s.generateTexture('pixel_star', 4, 4);
 }
@@ -80,11 +71,9 @@ function preload() {
 function create() {
     starGroup = this.add.group();
     this.time.addEvent({ delay: 450, callback: () => { let star = this.add.image(420, Phaser.Math.Between(0, 600), 'pixel_star'); star.setAlpha(Phaser.Math.FloatBetween(0.1, 0.3)); starGroup.add(star); }, loop: true });
-    
     smokeParticles = this.add.particles(0, 0, 'smoke_puff', { scale: { start: 0.3, end: 1.2 }, alpha: { start: 0.25, end: 0 }, lifespan: 700, speedX: { min: -100, max: -150 }, frequency: -1 }).setDepth(5);
     
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
-    // *** TIGHT NUG HITBOX (Skill-based) ***
     player.body.setCircle(45, 290, 95); 
     player.body.allowGravity = false;
 
@@ -92,21 +81,19 @@ function create() {
     scoreText = this.add.text(30, 30, '', { fontSize: '18px', fill: '#4ade80', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
     scoreText.setShadow(0, 0, '#4ade80', 10, true, true);
 
-    bongs = this.physics.add.group(); lighters = this.physics.add.group(); flames = this.physics.add.group();
+    bongs = this.physics.add.group(); lighters = this.physics.add.group(); 
+    flames = this.add.group(); // Visual only
     
     this.input.on('pointerdown', () => { if (!isStarted) return; if (audioCtx.state === 'suspended') audioCtx.resume(); player.setVelocityY(-410); playSfx('jump'); player.setTexture('nug_active'); this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); triggerGlitch(); });
-
     this.physics.add.overlap(player, bongs, gameOver, null, this);
     this.physics.add.overlap(player, lighters, gameOver, null, this);
-    this.physics.add.overlap(player, flames, gameOver, null, this);
     
     document.getElementById('start-btn').onclick = () => startGame.call(this);
     document.getElementById('retry-btn').onclick = () => window.location.reload();
 }
 
 function drawScoreBox(xOffset = 0, yOffset = 0) {
-    scoreBox.clear();
-    scoreBox.lineStyle(2, 0x4ade80, 0.8);
+    scoreBox.clear(); scoreBox.lineStyle(2, 0x4ade80, 0.8);
     scoreBox.strokeRect(20 + xOffset, 20 + yOffset, scoreText.width + 20, scoreText.height + 20);
 }
 
@@ -115,7 +102,6 @@ function triggerGlitch() { if (!isStarted) return; scoreText.setX(20 + Phaser.Ma
 function update() {
     starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
-    
     scoreText.setX(Phaser.Math.Linear(scoreText.x, 30, 0.15));
     drawScoreBox(scoreText.x - 30, scoreText.y - 30);
 
@@ -124,13 +110,11 @@ function update() {
 
     bongs.getChildren().forEach(bong => {
         if (bong.x < player.x && !bong.scored) { score += 0.5; if(Math.floor(score) > Math.floor(score - 0.5)) { scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); playSfx('point'); } bong.scored = true; }
-        if (bong.x > 0 && bong.x < 420 && this.time.now % 180 < 20) smokeParticles.emitParticleAt(bong.x, bong.y + (bong.flipY ? -5 : 5));
         if (bong.x < -100) bong.destroy();
     });
 
     lighters.getChildren().forEach((l, i) => { 
-        let f = flames.getChildren()[i]; 
-        l.y = l.startY + Math.sin(this.time.now / 300) * 40; 
+        let f = flames.getChildren()[i]; l.y = l.startY + Math.sin(this.time.now / 300) * 40; 
         if (f) { f.x = l.x - 45; f.y = l.y; } 
         if (l.x < -100) { l.destroy(); if (f) f.destroy(); } 
     });
@@ -139,21 +123,10 @@ function update() {
 function spawnLighter() {
     if (!isStarted) return;
     let y = Phaser.Math.Between(150, 450);
-    // *** LIGHTER BODY PHYSICS - Still present but tightened ***
     let l = lighters.create(500, y, 'lighter').setScale(0.08).setDepth(8);
     l.body.allowGravity = false; l.setVelocityX(-180); l.startY = y;
-    // Circular hitbox on the lighter body itself
-    l.body.setCircle(18).setOffset(l.width*0.35, l.height*0.35); 
-    
-    // *** FLAME PHYSICS - CRITICAL FIX ***
+    l.body.setCircle(28).setOffset(450, 200); // BEEFY & CENTERED
     let f = flames.create(l.x - 45, y, 'flame').setScale(0.08).setDepth(9);
-    f.body.allowGravity = false; f.setVelocityX(-180);
-    
-    // Create a precise circle right over the flame tip
-    f.body.setCircle(15).setOffset(l.width*0.05, l.height*0.35); 
-    f.body.setCircle(15).setOffset(150, 150); // Hard offset centered on the visual asset
-
-    // Flickering logic
     this.tweens.add({ targets: f, alpha: 0.2, duration: 50, yoyo: true, repeat: -1 }); 
 }
 
@@ -164,14 +137,17 @@ function spawnBongs() {
     const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
-    
-    // *** SLIGHTLY NARROWER BONG HITBOXES (Neck area) ***
-    top.body.setSize(52, 380).setOffset(332, 0); 
-    bot.body.setSize(52, 380).setOffset(332, 0);
+    top.body.setSize(52, 380).setOffset(332, 0); bot.body.setSize(52, 380).setOffset(332, 0);
 }
 
-function startGame() { playerName = nameInput.value || "PILOT"; localStorage.setItem('hoppyNugName', playerName); scoreText.setText(`${playerName.toUpperCase()}: 0`); drawScoreBox(); if (audioCtx.state === 'suspended') audioCtx.resume(); isStarted = true; player.body.allowGravity = true; document.getElementById('start-menu').style.display = 'none'; this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); }
-function gameOver() { if (!isStarted) return; isStarted = false; playSfx('crash'); this.physics.pause(); player.setTint(0xff3333); player.setTexture('nug'); let final = Math.floor(score); if (final > highScore) localStorage.setItem('hoppyNugBest', final); document.getElementById('game-over').style.display = 'block'; document.getElementById('final-score-text').innerText = "SCORE: " + final; }
+function startGame() { 
+    playerName = nameInput.value || "PILOT"; scoreText.setText(`${playerName.toUpperCase()}: 0`); 
+    drawScoreBox(); isStarted = true; player.body.allowGravity = true; 
+    document.getElementById('start-menu').style.display = 'none'; 
+    this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); 
+    this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); 
+}
+function gameOver() { if (!isStarted) return; isStarted = false; playSfx('crash'); this.physics.pause(); player.setTint(0xff3333); player.setTexture('nug'); document.getElementById('game-over').style.display = 'block'; document.getElementById('final-score-text').innerText = "SCORE: " + Math.floor(score); }
 </script>
 </body>
 </html>
