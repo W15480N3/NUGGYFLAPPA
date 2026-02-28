@@ -24,15 +24,15 @@
     <div id="ui-layer">
         <div id="start-menu" class="menu">
             <h1>HoppyNug</h1>
-            <div class="creator-tag">702WISH ORIGINALS</div>
+            <div class="creator-tag">702WISH</div>
             <p>VIVA LAS VEGAS</p>
             <div style="margin: 10px 0;">RECORD: <span id="best-score-start">0</span></div>
             <button id="start-btn">START BLAZING</button>
         </div>
 
         <div id="game-over" class="menu" style="display: none;">
-            <h1>BUSTED!</h1>
-            <div class="creator-tag">BY 702WISH</div>
+            <h1>Cashed</h1>
+            <div class="creator-tag">702WISH</div>
             <div style="margin: 10px 0;">SCORE: <span id="final-score">0</span></div>
             <div style="color: #4ade80;">BEST: <span id="best-score-over">0</span></div>
             <button id="retry-btn">TRY AGAIN</button>
@@ -64,9 +64,9 @@ function playSound(type) {
         osc.start(); osc.stop(now + 0.1);
     } else if (type === 'jackpot') {
         osc.type = 'sine'; 
-        osc.frequency.setValueAtTime(523.25, now); // C5
-        osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
-        osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.1);
+        osc.frequency.setValueAtTime(783.99, now + 0.2);
         gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
         osc.start(); osc.stop(now + 0.4);
     } else if (type === 'crash') {
@@ -86,7 +86,7 @@ const config = {
     pixelArt: true,
     physics: { 
         default: 'arcade', 
-        arcade: { gravity: { y: 1300 }, debug: true } 
+        arcade: { gravity: { y: 1300 }, debug: true } // DEBUG ON to see new boxes
     }, 
     scene: { preload: preload, create: create, update: update }
 };
@@ -126,7 +126,7 @@ function create() {
 
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
-    player.body.setSize(140, 140).setOffset(260, 70); 
+    player.body.setSize(130, 130).setOffset(265, 75); 
     player.body.allowGravity = false;
     player.setDepth(20);
 
@@ -165,11 +165,10 @@ function update() {
 
     if (player.y > 600 || player.y < 0) gameOver.call(this);
     
-    // Check for High Score Jackpot
     if (Math.floor(score) > highScore && !jackpotPlayed && highScore > 0) {
         playSound('jackpot');
         jackpotPlayed = true;
-        scoreText.setFill('#fbbf24'); // Change score color to gold
+        scoreText.setFill('#fbbf24');
     }
 
     lighters.getChildren().forEach((lighter, index) => {
@@ -206,16 +205,16 @@ function spawnLighter() {
     lighter.body.allowGravity = false;
     lighter.setVelocityX(speed);
     lighter.setScale(0.07); 
-    lighter.body.setCircle(lighter.width * 0.2); 
-    lighter.body.setOffset(lighter.width * 0.3, lighter.height * 0.3);
+    lighter.body.setCircle(lighter.width * 0.15); 
+    lighter.body.setOffset(lighter.width * 0.35, lighter.height * 0.35);
     lighter.startY = randomY;
 
     let flame = flames.create(lighter.x - 30, randomY, 'flame');
     flame.body.allowGravity = false;
     flame.setVelocityX(speed);
     flame.setScale(0.07);
-    flame.body.setSize(flame.width * 0.15, flame.height * 0.15);
-    flame.body.setOffset(flame.width * 0.42, flame.height * 0.42);
+    flame.body.setSize(flame.width * 0.1, flame.height * 0.1);
+    flame.body.setOffset(flame.width * 0.45, flame.height * 0.45);
 
     this.tweens.add({ targets: flame, alpha: 0.3, duration: 50, yoyo: true, repeat: -1 });
 }
@@ -226,12 +225,16 @@ function spawnBongs() {
     const randomY = Phaser.Math.Between(150, 450);
     const topBong = bongs.create(600, randomY - (gap / 2), 'bong').setOrigin(0.5, 1).setFlipY(true);
     const botBong = bongs.create(600, randomY + (gap / 2), 'bong').setOrigin(0.5, 0);
+    
     topBong.body.allowGravity = false;
     botBong.body.allowGravity = false;
     topBong.setVelocityX(-240);
     botBong.setVelocityX(-240);
-    topBong.body.setSize(50, 400).setOffset(330, 0);
-    botBong.body.setSize(50, 400).setOffset(330, 0);
+
+    // --- NEW TUNED BONG HITBOXES ---
+    // Making them narrower (40px) and shorter (300px) so they don't hit you from the void
+    topBong.body.setSize(40, 300).setOffset(335, 120); 
+    botBong.body.setSize(40, 300).setOffset(335, 10);
 }
 
 function startGame() {
