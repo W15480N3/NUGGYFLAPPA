@@ -6,29 +6,12 @@
     <title>High Flyer Vegas</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { 
-            margin: 0; padding: 0; background-color: #000; overflow: hidden; 
-            display: flex; justify-content: center; align-items: center; 
-            height: 100vh; width: 100vw;
-        }
-        canvas {
-            width: 100vw !important;
-            height: 100vh !important;
-            object-fit: contain; 
-        }
-        #ui-layer { 
-            position: absolute; width: 100%; height: 100%;
-            display: flex; justify-content: center; align-items: center; 
-            pointer-events: none; z-index: 100; 
-        }
-        .menu { 
-            pointer-events: auto; background: rgba(10, 30, 10, 0.95); 
-            border: 3px solid #fbbf24; border-radius: 20px; padding: 30px; 
-            color: white; text-align: center; box-shadow: 0 0 30px #fbbf24; 
-        }
+        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
+        canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
+        #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
+        .menu { pointer-events: auto; background: rgba(10, 30, 10, 0.95); border: 3px solid #fbbf24; border-radius: 20px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 30px #fbbf24; }
         h1 { color: #fbbf24; margin: 0; font-size: 32px; text-shadow: 0 0 10px #fbbf24; }
         button { background: #4ade80; color: #000; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 20px; }
-        .coupon { font-size: 30px; color: #fbbf24; margin: 15px 0; font-weight: bold; display: none; }
     </style>
 </head>
 <body>
@@ -39,17 +22,14 @@
             <p>VIVA LAS VEGAS</p>
             <button id="start-btn">START BLAZING</button>
         </div>
-
         <div id="game-over" class="menu" style="display: none;">
             <h1>VEGAS BUSTED!</h1>
             <p id="final-score">SCORE: 0</p>
-            <div id="coupon-code" class="coupon">CODE: VIVA420</div>
             <button id="retry-btn">RETRY</button>
         </div>
     </div>
 
 <script>
-// --- AUDIO (No changes) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
     const osc = audioCtx.createOscillator();
@@ -61,10 +41,6 @@ function playSound(type) {
         osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
         gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(); osc.stop(now + 0.1);
-    } else if (type === 'score') {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(880, now);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-        osc.start(); osc.stop(now + 0.3);
     } else if (type === 'crash') {
         const bufferSize = audioCtx.sampleRate * 0.3;
         const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -78,7 +54,6 @@ function playSound(type) {
     }
 }
 
-// --- CONFIG (DEBUG OFF, JUMBO HITBOX baseline) ---
 const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
@@ -87,85 +62,51 @@ const config = {
     scene: { preload: preload, create: create, update: update }
 };
 
-// --- GLOBAL VARIABLES (Added Lighter & Flame vars) ---
 let game = new Phaser.Game(config);
-let player, bongs, lighters, background, score = 0, isStarted = false, smokeParticles, spawnTimer, lighterTimer, scoreText;
+let player, bongs, lighters, flames, background, score = 0, isStarted = false, lighterTimer, scoreText;
 
 function preload() {
-    // Standard assets (with Cache Buster for the new desert image)
     this.load.image('nug', 'nug.png'); 
     this.load.image('bong', 'bong.png'); 
-    this.load.image('vegas', 'vegas.png?v=' + Date.now()); // Desert/Skyline
-
-    // Placeholder Assets for Lighter and Flame (Will be replaced if you provide PNGs)
-    let gfx = this.make.graphics();
-    gfx.fillStyle(0xffffff, 0.3); gfx.fillCircle(10, 10, 10);
-    gfx.generateTexture('smoke', 20, 20);
-
-    // Lighter Placeholder: A simple green rectangle lying horizontally
-    let gfxL = this.make.graphics();
-    gfxL.fillStyle(0x4ade80, 1); gfxL.fillRect(0, 0, 80, 30);
-    gfxL.generateTexture('lighter_base', 80, 30);
-
-    // Flame Placeholder: A yellow triangle pointing down (attached to lighter nozzle)
-    let gfxF = this.make.graphics();
-    gfxF.fillStyle(0xfbbf24, 1);
-    gfxF.beginPath();
-    gfxF.moveTo(15, 0); gfxF.lineTo(0, 40); gfxF.lineTo(30, 40); gfxF.closePath();
-    gfxF.fillPath();
-    gfxF.generateTexture('flame_base', 30, 40);
+    this.load.image('vegas', 'vegas.png?v=' + Date.now()); 
+    this.load.image('lighter', 'lighter.png'); 
+    this.load.image('flame', 'flame.png'); 
 }
 
 function create() {
-    // --- 1. INFINITE DESERT SCROLL ---
     background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
     let scaleFactor = 600 / background.height;
     background.tileScaleY = scaleFactor;
     background.tileScaleX = scaleFactor;
 
-    // --- 2. THE PLAYER NUG (JUMBO HITBOX: 180x180) ---
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
-    player.body.setSize(180, 180); 
-    player.body.setOffset(240, 50); 
+    player.body.setSize(180, 180).setOffset(240, 50); // JUMBO HITBOX
     player.body.allowGravity = false;
     player.setDepth(10);
 
-    // --- 3. THE LIVE SCORE ---
-    scoreText = this.add.text(20, 20, 'Score: 0', { 
-        fontSize: '32px', fill: '#4ade80', fontFamily: 'Arial Black', 
-        stroke: '#000', strokeThickness: 6 
-    }).setDepth(100);
-
-    // --- 4. THE HAZARDS ---
-    smokeParticles = this.add.particles(0, 0, 'smoke', {
-        scale: { start: 1, end: 6 }, alpha: { start: 0.4, end: 0 },
-        lifespan: 1200, speed: { min: 20, max: 40 }, frequency: 50
-    }).setDepth(5);
+    scoreText = this.add.text(20, 20, 'Score: 0', { fontSize: '32px', fill: '#4ade80', fontFamily: 'Arial Black' }).setDepth(100);
 
     bongs = this.physics.add.group();
-    lighters = this.physics.add.group(); // Create the new Lighter Group
+    lighters = this.physics.add.group();
+    flames = this.physics.add.group();
 
-    // --- 5. THE CONTROLS (Pointer down resumes audio and flaps) ---
     this.input.on('pointerdown', () => {
         if (!isStarted) return;
         if (audioCtx.state === 'suspended') audioCtx.resume();
         player.setVelocityY(-450);
         playSound('flap');
-        this.tweens.add({ targets: player, angle: -15, duration: 100, yoyo: true });
     });
 
-    // --- 6. THE COLLISIONS ---
     this.physics.add.collider(player, bongs, gameOver, null, this);
-    this.physics.add.collider(player, lighters, gameOver, null, this); // Collide with lighters!
+    this.physics.add.collider(player, flames, gameOver, null, this);
+    this.physics.add.collider(player, lighters, gameOver, null, this);
 
-    // --- 7. THE UI BUTTONS ---
     document.getElementById('start-btn').onclick = () => startGame.call(this);
     document.getElementById('retry-btn').onclick = () => window.location.reload();
 }
 
 function update() {
-    // INFINITE SCROLL
     background.tilePositionX += 2; 
 
     if (!isStarted) {
@@ -174,22 +115,60 @@ function update() {
     }
     if (player.y > 600 || player.y < 0) gameOver.call(this);
     
-    // --- BONG SCORING ---
-    bongs.children.entries.forEach(bong => {
+    // Wave Movement & Flame Sync
+    lighters.getChildren().forEach((lighter, index) => {
+        let flame = flames.getChildren()[index];
+        
+        // BOBBING LOGIC: Moves up and down based on time
+        lighter.y = lighter.startY + Math.sin(this.time.now / 200) * 50;
+
+        if (flame) {
+            flame.x = lighter.x - (lighter.width / 2); 
+            flame.y = lighter.y;
+        }
+        
+        if (lighter.x < -100) {
+            lighter.destroy();
+            if (flame) flame.destroy();
+        }
+    });
+
+    bongs.getChildren().forEach(bong => {
         if (bong.x < player.x && !bong.scored) {
             score += 0.5;
             if(Math.floor(score) > Math.floor(score - 0.5)) {
-                playSound('score');
                 scoreText.setText('Score: ' + Math.floor(score));
             }
             bong.scored = true;
         }
-        if (bong.x < -150) bong.destroy();
+        if (bong.x < -100) bong.destroy();
     });
+}
 
-    // --- LIGHTER CLEANUP ---
-    lighters.children.entries.forEach(lighter => {
-        if (lighter.x < -150) lighter.destroy();
+function spawnLighter() {
+    if (!isStarted) return;
+
+    let randomY = Phaser.Math.Between(150, 450);
+    let speed = Phaser.Math.Between(-320, -480);
+
+    let lighter = lighters.create(500, randomY, 'lighter');
+    lighter.body.allowGravity = false;
+    lighter.setVelocityX(speed);
+    lighter.setDepth(9);
+    lighter.startY = randomY; // Store the original Y to calculate the wave
+
+    let flame = flames.create(lighter.x - 40, randomY, 'flame');
+    flame.body.allowGravity = false;
+    flame.setVelocityX(speed);
+    flame.setDepth(9);
+
+    // Flicker effect
+    this.tweens.add({
+        targets: flame,
+        alpha: 0.4,
+        duration: 60,
+        yoyo: true,
+        repeat: -1
     });
 }
 
@@ -198,71 +177,12 @@ function spawnBongs() {
     const gap = 280; 
     const spawnX = 600;
     const randomY = Phaser.Math.Between(150, 450);
-
-    const topBong = bongs.create(spawnX, randomY - (gap / 2), 'bong').setOrigin(0.5, 1);
-    topBong.setFlipY(true);
+    const topBong = bongs.create(spawnX, randomY - (gap / 2), 'bong').setOrigin(0.5, 1).setFlipY(true);
     const botBong = bongs.create(spawnX, randomY + (gap / 2), 'bong').setOrigin(0.5, 0);
-
     topBong.body.allowGravity = false;
     botBong.body.allowGravity = false;
     topBong.setVelocityX(-240);
     botBong.setVelocityX(-240);
-
-    // Hitbox Baseline (Y-axis offset)
-    topBong.body.setSize(40, 180).setOffset(340, 150); 
-    botBong.body.setSize(40, 180).setOffset(340, 50);
-
-    topBong.setDepth(8);
-    botBong.setDepth(8);
-
-    // Add bong smoke
-    this.time.addEvent({
-        delay: 50, repeat: 30,
-        callback: () => {
-            if (botBong.active) {
-                smokeParticles.emitParticleAt(botBong.x, botBong.y + 20);
-                smokeParticles.emitParticleAt(topBong.x, topBong.y - 20);
-            }
-        }
-    });
-}
-
-// --- NEW FUNCTION: SPAWN LIGHTER HAZARD ---
-function spawnLighter() {
-    if (!isStarted) return;
-
-    const spawnX = 600;
-    // Spawns specifically through the central zone, at varying vertical levels
-    const randomY = Phaser.Math.Between(200, 400); 
-
-    // 1. Create the Lighter Base (lay it horizontally)
-    const lighter = lighters.create(spawnX, randomY, 'lighter_base').setOrigin(0.5, 0.5);
-    lighter.body.allowGravity = false;
-    lighter.setVelocityX(-350); // Lighter moves faster than bongs to surprise you!
-    
-    // Set Lighter Hitbox (Horizontal box)
-    lighter.body.setSize(80, 25).setOffset(0, 2.5);
-    lighter.setDepth(9);
-
-    // 2. Create the Flame Sprite
-    const flame = lighters.create(spawnX - 45, randomY, 'flame_base').setOrigin(0.5, 0.5);
-    flame.body.allowGravity = false;
-    flame.setVelocityX(-350); // Move with the lighter
-    
-    // Set Flame Hitbox (attached to front-left nozzle)
-    flame.body.setSize(20, 30).setOffset(5, 5);
-    flame.setDepth(9);
-    flame.setTint(0xff3333); // Red hot tint
-
-    // 3. Flame Animation (Simple flicker: scaling the Y axis)
-    this.tweens.add({
-        targets: flame,
-        scaleY: { from: 1, to: 1.4 },
-        duration: 80,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-    });
 }
 
 function startGame() {
@@ -271,28 +191,25 @@ function startGame() {
     isStarted = true;
     player.body.allowGravity = true;
     
-    // Timer 1: Bongs (Every 1.8 seconds)
-    spawnTimer = this.time.addEvent({ delay: 1800, callback: spawnBongs, callbackScope: this, loop: true });
+    this.time.addEvent({ delay: 1800, callback: spawnBongs, callbackScope: this, loop: true });
     
-    // Timer 2: Lighter (Randomly, every 4 to 10 seconds)
     lighterTimer = this.time.addEvent({ 
-        delay: Phaser.Math.Between(4000, 10000), 
-        callback: () => { spawnLighter.call(this); lighterTimer.reset({ delay: Phaser.Math.Between(4000, 10000) }); }, 
+        delay: Phaser.Math.Between(3000, 6000), 
+        callback: () => {
+            spawnLighter.call(this);
+            lighterTimer.delay = Phaser.Math.Between(3000, 6000); 
+        }, 
         callbackScope: this, loop: true 
     });
 }
 
 function gameOver() {
-    if (!isStarted) return;
     isStarted = false;
     playSound('crash');
     this.physics.pause();
-    if (spawnTimer) spawnTimer.remove();
-    if (lighterTimer) lighterTimer.remove(); // Stop the lighter timer
     player.setTint(0xff3333);
     document.getElementById('game-over').style.display = 'block';
     document.getElementById('final-score').innerText = "SCORE: " + Math.floor(score);
-    if (score >= 10) document.getElementById('coupon-code').style.display = 'block';
 }
 </script>
 </body>
