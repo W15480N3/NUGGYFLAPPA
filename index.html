@@ -63,7 +63,7 @@ function playSound(type) {
         osc.start(); osc.stop(now + 0.3);
     } else if (type === 'crash') {
         osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
-        osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+        osc.frequency.exponentialRampToValueAtTime(40,- now + 0.2);
         gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
         osc.start(); osc.stop(now + 0.2);
     }
@@ -79,7 +79,7 @@ const config = {
 };
 
 let game = new Phaser.Game(config);
-let player, bongs, lighters, flames, spaceDust, score = 0, isStarted = false, scoreText, smokeParticles;
+let player, bongs, lighters, flames, spaceDust, colorStars, score = 0, isStarted = false, scoreText, smokeParticles;
 
 let highScore = localStorage.getItem('hoppyNugBest') || 0;
 document.getElementById('best-score-start').innerText = highScore;
@@ -90,18 +90,40 @@ function preload() {
     this.load.image('lighter', 'lighter.png'); 
     this.load.image('flame', 'flame.png'); 
     
+    // Soft Smoke
     let smokeGfx = this.make.graphics();
     smokeGfx.fillStyle(0xffffff, 0.2); smokeGfx.fillCircle(8, 8, 8);
     smokeGfx.generateTexture('smoke', 16, 16);
 
+    // Subtle Dust (keep the base layer)
     let dustGfx = this.make.graphics();
     dustGfx.fillStyle(0x222222, 1); dustGfx.fillCircle(1, 1, 1);
     dustGfx.generateTexture('dust', 2, 2);
+
+    // --- NEW: GENERATE MULTICOLOR STAR TEXTURE ---
+    // Instead of white, we generate four distinct colors.
+    let starGfx = this.make.graphics();
+    const colors = [0x4ade80, 0xbf80ff, 0x4da6ff, 0xfbbf24]; // Neon Green, Purple, Blue, Gold
+
+    colors.forEach((color, index) => {
+        // Place a small circle for each color at a unique X position (0, 8, 16, 24).
+        starGfx.fillStyle(color, 1);
+        starGfx.fillCircle((index * 8) + 3, 3, 3);
+    });
+
+    // Generate a wide texture (32x8) containing all four colors.
+    // This allows the tileSprite to randomly tile different colored stars.
+    starGfx.generateTexture('colorstar', 32, 8);
 }
 
 function create() {
-    // Ultra subtle dust (10% opacity)
+    // 1. Ultra subtle dust (10% opacity, base layer)
     spaceDust = this.add.tileSprite(0, 0, 400, 600, 'dust').setOrigin(0, 0).setAlpha(0.1);
+
+    // 2. --- NEW: ADD SCROLLING MULTICOLOR STARLAYER ---
+    // We add this layer on top of the dust, but set low opacity so it stays subtle.
+    // Since the texture is multicolor, the tiling will look like a randomized starry void.
+    colorStars = this.add.tileSprite(0, 0, 400, 600, 'colorstar').setOrigin(0, 0).setAlpha(0.15); // Set slightly brighter than dust
 
     smokeParticles = this.add.particles(0, 0, 'smoke', {
         scale: { start: 0.3, end: 1.2 },
@@ -142,6 +164,10 @@ function create() {
 
 function update() {
     spaceDust.tilePositionX += 0.05; 
+    
+    // --- NEW: SCROLL THE COLOR STARS (Parallax) ---
+    // The stars move slightly faster than the background dust for depth.
+    colorStars.tilePositionX += 0.1; // Slow, hypnotic travel
 
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 400) * 10;
@@ -204,12 +230,11 @@ function spawnBongs() {
     topBong.body.setSize(40, 300).setOffset(335, 0); 
     botBong.body.setSize(40, 300).setOffset(335, 0); 
 
-    // --- SMOKE FIXED: Tucked inside the rim ---
     this.time.addEvent({
         delay: 60, repeat: 25, 
         callback: () => {
             if (botBong.active) {
-                // Smoke logic reversed to push it INTO the bong
+                // Internal smoke baseline
                 smokeParticles.emitParticleAt(botBong.x, botBong.y - 15); 
                 smokeParticles.emitParticleAt(topBong.x, topBong.y + 15);
             }
