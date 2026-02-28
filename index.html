@@ -10,7 +10,8 @@
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
         .menu { pointer-events: auto; background: rgba(0, 0, 0, 0.95); border: 2px solid #4ade80; border-radius: 15px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 20px rgba(74, 222, 128, 0.2); }
-        button { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 20px; }
+        button { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 20px; transition: 0.1s; }
+        button:active { transform: scale(0.95); }
         #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #4ade80; font-size: 24px; cursor: pointer; z-index: 1000; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -80,7 +81,8 @@ let game = new Phaser.Game(config);
 let player, bongs, lighters, flames, smokeParticles, starGroup, scoreText;
 
 function preload() {
-    this.load.image('nug', 'nug.png'); 
+    this.load.image('nug', 'nug.png'); // Your original PNG
+    this.load.image('nug_active', 'nug_active.png'); // *** LOAD NEW ACTIVE PNG HERE ***
     this.load.image('bong', 'bong.png'); 
     this.load.image('lighter', 'lighter.png'); 
     this.load.image('flame', 'flame.png'); 
@@ -91,6 +93,7 @@ function preload() {
 }
 
 function create() {
+    // Stars
     starGroup = this.add.group();
     this.time.addEvent({ delay: 450, callback: () => {
             let star = this.add.image(420, Phaser.Math.Between(0, 600), 'pixel_star');
@@ -99,6 +102,7 @@ function create() {
             starGroup.add(star);
         }, loop: true });
 
+    // Smoke
     smokeParticles = this.add.particles(0, 0, 'smoke_puff', {
         scale: { start: 0.3, end: 1.2 },
         alpha: { start: 0.25, end: 0 },
@@ -107,6 +111,7 @@ function create() {
         frequency: -1 
     }).setDepth(5);
 
+    // Player (Starts on default 'nug')
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(50, 280, 90); 
     player.body.allowGravity = false;
@@ -122,6 +127,16 @@ function create() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         player.setVelocityY(-410);
         playSfx('jump');
+
+        // *** ACTIVATE ANIMATION ON TAP ***
+        player.setTexture('nug_active'); // Swap to the excited sprite
+        
+        // Use a timer to revert back to default after 200ms
+        this.time.delayedCall(200, () => {
+            if (isStarted) { // Only revert if the game hasn't ended
+                player.setTexture('nug');
+            }
+        });
     });
 
     this.physics.add.overlap(player, bongs, gameOver, null, this);
@@ -152,10 +167,9 @@ function update() {
             bong.scored = true;
         }
         
-        // SMOKE TIP ALIGNMENT FIX
-        // We check if it's the top or bottom bong and apply a specific offset to the tip
+        // Smoke Tip Alignment
         if (bong.x > 0 && bong.x < 420 && this.time.now % 180 < 20) {
-            let offsetY = bong.flipY ? -5 : 5; // Top bong vs Bottom bong tip
+            let offsetY = bong.flipY ? -5 : 5;
             smokeParticles.emitParticleAt(bong.x, bong.y + offsetY);
         }
         
@@ -183,7 +197,6 @@ function spawnLighter() {
 function spawnBongs() {
     if (!isStarted) return;
     const y = Phaser.Math.Between(150, 450);
-    // Bongs are now spawned exactly 145px away from the center gap
     const top = bongs.create(550, y - 145, 'bong').setOrigin(0.5, 1).setFlipY(true).setDepth(7);
     const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0).setDepth(7);
     top.body.allowGravity = false; bot.body.allowGravity = false;
@@ -206,6 +219,7 @@ function gameOver() {
     playSfx('crash'); 
     this.physics.pause(); 
     player.setTint(0xff3333); 
+    player.setTexture('nug'); // Revert to default on death
     let final = Math.floor(score); 
     if (final > highScore) localStorage.setItem('hoppyNugBest', final); 
     document.getElementById('game-over').style.display = 'block'; 
