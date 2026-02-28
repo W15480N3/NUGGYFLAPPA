@@ -10,8 +10,7 @@
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
         .menu { pointer-events: auto; background: rgba(0, 0, 0, 0.95); border: 2px solid #4ade80; border-radius: 15px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 20px rgba(74, 222, 128, 0.2); }
-        button { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 20px; transition: 0.1s; }
-        button:active { transform: scale(0.95); }
+        button { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 20px; }
         #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #4ade80; font-size: 24px; cursor: pointer; z-index: 1000; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -60,15 +59,6 @@ function playSfx(type) {
         osc.frequency.linearRampToValueAtTime(20, now + 0.4);
         gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4);
         osc.start(); osc.stop(now + 0.4);
-    } else if (type === 'high') {
-        [523, 659, 783, 1046].forEach((f, i) => {
-            const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-            o.connect(g); g.connect(audioCtx.destination);
-            o.frequency.setValueAtTime(f, now + (i * 0.1));
-            g.gain.setValueAtTime(0.1, now + (i * 0.1));
-            g.gain.linearRampToValueAtTime(0, now + (i * 0.1) + 0.2);
-            o.start(now + (i * 0.1)); o.stop(now + (i * 0.1) + 0.2);
-        });
     }
 }
 
@@ -101,7 +91,6 @@ function preload() {
 }
 
 function create() {
-    // Background Stars (Lowest depth)
     starGroup = this.add.group();
     this.time.addEvent({ delay: 450, callback: () => {
             let star = this.add.image(420, Phaser.Math.Between(0, 600), 'pixel_star');
@@ -110,22 +99,19 @@ function create() {
             starGroup.add(star);
         }, loop: true });
 
-    // Smoke Particles (Depth 5 - BEHIND Nug, but in front of stars)
+    // Single Particle Manager for everything
     smokeParticles = this.add.particles(0, 0, 'smoke_puff', {
         scale: { start: 0.4, end: 1.8 },
         alpha: { start: 0.3, end: 0 },
         lifespan: 800,
         speedX: { min: -120, max: -180 },
-        frequency: 50
-    }).setDepth(5); // *** FIX APPLIED HERE: Depths rearranged ***
+        frequency: -1 // Manual emission only to prevent "streaking"
+    }).setDepth(5);
 
-    // Player (Depth 10 - IN FRONT of smoke trail)
-    player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35);
+    player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(50, 280, 90); 
     player.body.allowGravity = false;
-    player.setDepth(10); // *** FIX APPLIED HERE: Depths rearranged ***
 
-    // Score Text (Top depth)
     scoreText = this.add.text(20, 20, '0', { fontSize: '42px', fill: '#4ade80', fontFamily: 'Arial Black' }).setAlpha(0.3).setDepth(100);
 
     bongs = this.physics.add.group();
@@ -151,18 +137,24 @@ function update() {
     starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
 
-    // Particle emission point (Adjusted so it comes from the butt)
-    smokeParticles.emitParticleAt(player.x - 25, player.y + 10);
+    // Manual Nug Trail Emission
+    if (this.time.now % 60 < 20) {
+        smokeParticles.emitParticleAt(player.x - 25, player.y + 10);
+    }
+
     if (player.y > 600 || player.y < 0) gameOver.call(this);
 
     bongs.getChildren().forEach(bong => {
         if (bong.x < player.x && !bong.scored) {
             score += 0.5;
             if(Math.floor(score) > Math.floor(score - 0.5)) {
-                let s = Math.floor(score); scoreText.setText(s); playSfx('point');
-                if (s > highScore && !scoreMilestone && highScore > 0) { playSfx('high'); scoreMilestone = true; scoreText.setAlpha(1).setFill('#fbbf24'); }
+                scoreText.setText(Math.floor(score)); playSfx('point');
             }
             bong.scored = true;
+        }
+        // FIXED BONG SMOKE: Emit puffs only while on screen, using shared manager
+        if (bong.x > 0 && bong.x < 450 && this.time.now % 150 < 20) {
+            smokeParticles.emitParticleAt(bong.x, bong.y + (bong.flipY ? 20 : -20));
         }
         if (bong.x < -100) bong.destroy();
     });
@@ -193,19 +185,28 @@ function spawnBongs() {
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
     top.body.setSize(55, 380).setOffset(330, 0); bot.body.setSize(55, 380).setOffset(330, 0);
-
-    this.time.addEvent({ delay: 100, repeat: 10, callback: () => {
-            if (bot.active) {
-                // Bong smoke emissions (Lower depth than trail)
-                this.add.particles(bot.x, bot.y + 2, 'smoke_puff', { lifespan: 500, scale: { start: 0.2, end: 0.5 }, speed: 10, count: 1 }).setDepth(4);
-                this.add.particles(top.x, top.y - 2, 'smoke_puff', { lifespan: 500, scale: { start: 0.2, end: 0.5 }, speed: 10, count: 1 }).setDepth(4);
-            }
-        } });
 }
 
-function startGame() { if (audioCtx.state === 'suspended') audioCtx.resume(); isStarted = true; player.body.allowGravity = true; document.getElementById('start-menu').style.display = 'none'; this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); }
+function startGame() { 
+    if (audioCtx.state === 'suspended') audioCtx.resume(); 
+    isStarted = true; 
+    player.body.allowGravity = true; 
+    document.getElementById('start-menu').style.display = 'none'; 
+    this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); 
+    this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); 
+}
 
-function gameOver() { if (!isStarted) return; isStarted = false; playSfx('crash'); this.physics.pause(); player.setTint(0xff3333); let final = Math.floor(score); if (final > highScore) localStorage.setItem('hoppyNugBest', final); document.getElementById('game-over').style.display = 'block'; document.getElementById('final-score-text').innerText = "SCORE: " + final; }
+function gameOver() { 
+    if (!isStarted) return; 
+    isStarted = false; 
+    playSfx('crash'); 
+    this.physics.pause(); 
+    player.setTint(0xff3333); 
+    let final = Math.floor(score); 
+    if (final > highScore) localStorage.setItem('hoppyNugBest', final); 
+    document.getElementById('game-over').style.display = 'block'; 
+    document.getElementById('final-score-text').innerText = "SCORE: " + final; 
+}
 </script>
 </body>
 </html>
