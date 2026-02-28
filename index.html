@@ -10,17 +10,8 @@
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
         .menu { pointer-events: auto; background: rgba(0, 0, 0, 0.95); border: 2px solid #4ade80; border-radius: 15px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 20px rgba(74, 222, 128, 0.2); }
-        
-        /* Name Input Styles */
-        input#player-name { 
-            background: #111; border: 2px solid #4ade80; color: #fff; 
-            padding: 10px; font-size: 18px; border-radius: 5px; text-align: center; 
-            margin: 15px 0; width: 80%; outline: none; font-family: 'Arial Black', sans-serif;
-        }
-        input#player-name::placeholder { color: #444; }
-
-        button { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; transition: 0.1s; width: 100%; }
-        button:active { transform: scale(0.95); }
+        input#player-name { background: #111; border: 2px solid #4ade80; color: #fff; padding: 10px; font-size: 18px; border-radius: 5px; text-align: center; margin: 15px 0; width: 80%; outline: none; font-family: 'Arial Black', sans-serif; }
+        button { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; width: 100%; }
         #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #4ade80; font-size: 24px; cursor: pointer; z-index: 1000; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -31,17 +22,13 @@
     <div id="ui-layer">
         <div id="start-menu" class="menu">
             <h1 style="color: #4ade80; margin:0; font-size: 42px;">HoppyNug</h1>
-            <div style="color: #fbbf24; letter-spacing: 3px; font-size: 12px; font-weight: bold;">702WISH</div>
-            
-            <input type="text" id="player-name" placeholder="ENTER NAME" maxlength="12">
-            
+            <input type="text" id="player-name" placeholder="ENTER NAME" maxlength="10">
             <p id="best-display" style="color: #888; margin: 10px 0; font-size: 14px;">RECORD: 0</p>
             <button id="start-btn">IGNITE</button>
         </div>
 
         <div id="game-over" class="menu" style="display: none;">
             <h1 style="color: #ff3333; margin:0;">WASTED</h1>
-            <p id="player-display" style="color: #4ade80; margin: 5px 0;"></p>
             <p id="final-score-text" style="font-size: 24px; margin: 10px 0;">SCORE: 0</p>
             <button id="retry-btn">RE-UP</button>
         </div>
@@ -57,7 +44,6 @@ function playSfx(type) {
     const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
     const now = audioCtx.currentTime;
-
     if (type === 'jump') {
         osc.type = 'triangle'; osc.frequency.setValueAtTime(180, now);
         osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
@@ -76,17 +62,15 @@ function playSfx(type) {
     }
 }
 
-// --- GAME LOGIC ---
 const muteBtn = document.getElementById('mute-btn');
 muteBtn.onclick = () => { isMuted = !isMuted; muteBtn.innerText = isMuted ? '🔇' : '🔊'; };
 
 let score = 0, isStarted = false, playerName = localStorage.getItem('hoppyNugName') || "";
 let highScore = localStorage.getItem('hoppyNugBest') || 0;
 
-// Setup Name and Record Display
 const nameInput = document.getElementById('player-name');
 nameInput.value = playerName;
-document.getElementById('best-display').innerText = (playerName || "RECORD") + ": " + highScore;
+document.getElementById('best-display').innerText = "RECORD: " + highScore;
 
 const config = {
     type: Phaser.AUTO,
@@ -97,7 +81,7 @@ const config = {
 };
 
 let game = new Phaser.Game(config);
-let player, bongs, lighters, flames, smokeParticles, starGroup, scoreText;
+let player, bongs, lighters, flames, smokeParticles, starGroup, scoreText, glitchTimer = 0;
 
 function preload() {
     this.load.image('nug', 'nug.png'); 
@@ -115,24 +99,24 @@ function create() {
     starGroup = this.add.group();
     this.time.addEvent({ delay: 450, callback: () => {
             let star = this.add.image(420, Phaser.Math.Between(0, 600), 'pixel_star');
-            let colors = [0x4ade80, 0xbf80ff, 0x4da6ff, 0xfbbf24, 0xffffff];
-            star.setTint(Phaser.Utils.Array.GetRandom(colors)).setAlpha(Phaser.Math.FloatBetween(0.1, 0.3)).setDepth(0);
+            star.setAlpha(Phaser.Math.FloatBetween(0.1, 0.3)).setDepth(0);
             starGroup.add(star);
         }, loop: true });
 
-    smokeParticles = this.add.particles(0, 0, 'smoke_puff', {
-        scale: { start: 0.3, end: 1.2 },
-        alpha: { start: 0.25, end: 0 },
-        lifespan: 700,
-        speedX: { min: -100, max: -150 },
-        frequency: -1 
-    }).setDepth(5);
+    smokeParticles = this.add.particles(0, 0, 'smoke_puff', { scale: { start: 0.3, end: 1.2 }, alpha: { start: 0.25, end: 0 }, lifespan: 700, speedX: { min: -100, max: -150 }, frequency: -1 }).setDepth(5);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(50, 280, 90); 
     player.body.allowGravity = false;
 
-    scoreText = this.add.text(20, 20, '0', { fontSize: '42px', fill: '#4ade80', fontFamily: 'Arial Black' }).setAlpha(0.3).setDepth(100);
+    // --- GLITCH UI SETUP ---
+    scoreText = this.add.text(20, 20, '', { 
+        fontSize: '28px', 
+        fill: '#4ade80', 
+        fontFamily: 'Arial Black',
+        stroke: '#000',
+        strokeThickness: 4
+    }).setDepth(100);
 
     bongs = this.physics.add.group();
     lighters = this.physics.add.group();
@@ -141,10 +125,10 @@ function create() {
     this.input.on('pointerdown', () => {
         if (!isStarted) return;
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        player.setVelocityY(-410);
-        playSfx('jump');
+        player.setVelocityY(-410); playSfx('jump');
         player.setTexture('nug_active');
-        this.time.delayedCall(200, () => { if (isStarted) player.setTexture('nug'); });
+        this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); });
+        triggerGlitch(); // Jitter name on jump
     });
 
     this.physics.add.overlap(player, bongs, gameOver, null, this);
@@ -155,9 +139,21 @@ function create() {
     document.getElementById('retry-btn').onclick = () => window.location.reload();
 }
 
+function triggerGlitch() {
+    if (!isStarted) return;
+    scoreText.setX(20 + Phaser.Math.Between(-3, 3));
+    scoreText.setAlpha(Phaser.Math.FloatBetween(0.5, 1));
+    if (Math.random() > 0.8) scoreText.setFill('#ff3333');
+    else scoreText.setFill('#4ade80');
+}
+
 function update() {
     starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
+
+    // Glitch decay
+    scoreText.setX(Phaser.Math.Linear(scoreText.x, 20, 0.1));
+    if (this.time.now % 2000 < 50) triggerGlitch(); // Periodic glitch
 
     if (this.time.now % 60 < 20) smokeParticles.emitParticleAt(player.x - 25, player.y + 5);
     if (player.y > 600 || player.y < 0) gameOver.call(this);
@@ -166,13 +162,14 @@ function update() {
         if (bong.x < player.x && !bong.scored) {
             score += 0.5;
             if(Math.floor(score) > Math.floor(score - 0.5)) {
-                scoreText.setText(Math.floor(score)); playSfx('point');
+                scoreText.setText(`${playerName.toUpperCase()} >> ${Math.floor(score)}`);
+                playSfx('point');
+                triggerGlitch();
             }
             bong.scored = true;
         }
         if (bong.x > 0 && bong.x < 420 && this.time.now % 180 < 20) {
-            let offsetY = bong.flipY ? -5 : 5;
-            smokeParticles.emitParticleAt(bong.x, bong.y + offsetY);
+            smokeParticles.emitParticleAt(bong.x, bong.y + (bong.flipY ? -5 : 5));
         }
         if (bong.x < -100) bong.destroy();
     });
@@ -191,7 +188,7 @@ function spawnLighter() {
     l.body.allowGravity = false; l.setVelocityX(-180); l.startY = y;
     l.body.setCircle(20).setOffset(l.width*0.35, l.height*0.35);
     let f = flames.create(l.x - 45, y, 'flame').setScale(0.08).setDepth(9);
-    f.body.allowGravity = false; f.setVelocityX(-180); f.body.setSize(10,10);
+    f.body.allowGravity = false; f.setVelocityX(-180);
     this.tweens.add({ targets: f, alpha: 0.2, duration: 50, yoyo: true, repeat: -1 });
 }
 
@@ -206,13 +203,11 @@ function spawnBongs() {
 }
 
 function startGame() { 
-    // Save Name
-    playerName = nameInput.value || "ANON";
+    playerName = nameInput.value || "USER_1";
     localStorage.setItem('hoppyNugName', playerName);
-    
+    scoreText.setText(`${playerName.toUpperCase()} >> 0`);
     if (audioCtx.state === 'suspended') audioCtx.resume(); 
-    isStarted = true; 
-    player.body.allowGravity = true; 
+    isStarted = true; player.body.allowGravity = true; 
     document.getElementById('start-menu').style.display = 'none'; 
     this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); 
     this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); 
@@ -220,17 +215,11 @@ function startGame() {
 
 function gameOver() { 
     if (!isStarted) return; 
-    isStarted = false; 
-    playSfx('crash'); 
-    this.physics.pause(); 
-    player.setTint(0xff3333); 
-    player.setTexture('nug');
-    
+    isStarted = false; playSfx('crash'); this.physics.pause(); 
+    player.setTint(0xff3333); player.setTexture('nug');
     let final = Math.floor(score); 
     if (final > highScore) localStorage.setItem('hoppyNugBest', final); 
-    
     document.getElementById('game-over').style.display = 'block'; 
-    document.getElementById('player-display').innerText = playerName;
     document.getElementById('final-score-text').innerText = "SCORE: " + final; 
 }
 </script>
