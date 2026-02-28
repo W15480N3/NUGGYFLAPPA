@@ -7,41 +7,24 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { 
-            margin: 0; 
-            padding: 0; 
-            background-color: #000; 
-            overflow: hidden; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            width: 100vw;
+            margin: 0; padding: 0; background-color: #000; overflow: hidden; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; width: 100vw;
         }
         canvas {
-            max-width: 100%;
-            max-height: 100vh;
-            object-fit: contain;
+            width: 100vw !important;
+            height: 100vh !important;
+            object-fit: fill; /* This stretches the canvas to the browser edges */
         }
         #ui-layer { 
-            position: absolute; 
-            aspect-ratio: 400 / 600;
-            height: 100vh;
-            max-width: 100%;
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            pointer-events: none; 
-            z-index: 100; 
+            position: absolute; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center; 
+            pointer-events: none; z-index: 100; 
         }
         .menu { 
-            pointer-events: auto; 
-            background: rgba(10, 30, 10, 0.95); 
-            border: 3px solid #fbbf24; 
-            border-radius: 20px; 
-            padding: 30px; 
-            color: white; 
-            text-align: center; 
-            box-shadow: 0 0 30px #fbbf24; 
+            pointer-events: auto; background: rgba(10, 30, 10, 0.95); 
+            border: 3px solid #fbbf24; border-radius: 20px; padding: 30px; 
+            color: white; text-align: center; box-shadow: 0 0 30px #fbbf24; 
         }
         h1 { color: #fbbf24; margin: 0; font-size: 32px; text-shadow: 0 0 10px #fbbf24; }
         button { background: #4ade80; color: #000; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 20px; }
@@ -66,7 +49,7 @@
     </div>
 
 <script>
-// --- AUDIO ---
+// --- AUDIO ENGINE ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
     const osc = audioCtx.createOscillator();
@@ -95,7 +78,7 @@ function playSound(type) {
     }
 }
 
-// --- CONFIG ---
+// --- GAME CONFIG ---
 const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
@@ -117,13 +100,9 @@ function preload() {
 }
 
 function create() {
-    // BACKGROUND FIX: Scale to cover the 400x600 area completely
-    background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
-    
-    // Calculate scale to ensure the image fills the height
-    let scaleY = 600 / background.height;
-    background.tileScaleY = scaleY;
-    background.tileScaleX = scaleY; // Keep it proportional
+    // REPLACED TILESPRITE WITH STRETCHED IMAGE
+    background = this.add.image(0, 0, 'vegas').setOrigin(0, 0);
+    background.setDisplaySize(400, 600); // Forces the image to fill the canvas exactly
 
     // PLAYER NUG: Jumbo 180x180 Hitbox
     player = this.physics.add.sprite(100, 300, 'nug');
@@ -134,7 +113,6 @@ function create() {
     player.body.allowGravity = false;
     player.setDepth(10);
 
-    // Live Score
     scoreText = this.add.text(20, 20, 'Score: 0', { 
         fontSize: '32px', fill: '#4ade80', fontFamily: 'Arial Black', 
         stroke: '#000', strokeThickness: 6 
@@ -161,7 +139,7 @@ function create() {
 }
 
 function update() {
-    background.tilePositionX += 1.5; // Speed up scroll slightly for Vegas feel
+    // Note: Background no longer scrolls because it is a single stretched image
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 300) * 15;
         return;
@@ -196,7 +174,7 @@ function spawnBongs() {
     topBong.setVelocityX(-240);
     botBong.setVelocityX(-240);
 
-    // Hitbox Baseline (Based on your working preferences)
+    // Hitbox Baseline
     topBong.body.setSize(40, 180).setOffset(340, 150); 
     botBong.body.setSize(40, 180).setOffset(340, 50);
 
