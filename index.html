@@ -32,6 +32,7 @@
     </div>
 
 <script>
+// --- AUDIO ENGINE ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
     const osc = audioCtx.createOscillator();
@@ -60,11 +61,12 @@ function playSound(type) {
     }
 }
 
+// --- GAME CONFIG (DEBUG OFF) ---
 const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
     pixelArt: true,
-    physics: { default: 'arcade', arcade: { gravity: { y: 1300 }, debug: true } },
+    physics: { default: 'arcade', arcade: { gravity: { y: 1300 }, debug: false } }, // DEBUG IS NOW OFF
     scene: { preload: preload, create: create, update: update }
 };
 
@@ -74,27 +76,27 @@ let player, bongs, background, score = 0, isStarted = false, smokeParticles, spa
 function preload() {
     this.load.image('nug', 'nug.png'); 
     this.load.image('bong', 'bong.png'); 
-    this.load.image('vegas', 'vegas.png'); // Keep your original filename
-    
+    this.load.image('vegas', 'vegas.png'); 
     let gfx = this.make.graphics();
     gfx.fillStyle(0xffffff, 0.3); gfx.fillCircle(10, 10, 10);
     gfx.generateTexture('smoke', 20, 20);
 }
 
 function create() {
-    // 1. Background Setup: Fits exactly 400x600
     background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
-    
-    // 2. Player Nug: Hitbox Enlarged from 60 to 90
+    background.setDisplaySize(400, 600);
+
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
-    player.body.setSize(90, 90); // LARGER HITBOX
-    player.body.setOffset(310, 120); 
+    
+    // NUG HITBOX: Doubled to 180x180. 
+    // Adjusted Offset to keep it centered on the Nug graphic.
+    player.body.setSize(180, 180);
+    player.body.setOffset(240, 50); 
 
     player.body.allowGravity = false;
     player.setDepth(10);
 
-    // 3. UI Score
     scoreText = this.add.text(20, 20, 'Score: 0', { 
         fontSize: '32px', fill: '#4ade80', fontFamily: 'Arial Black', 
         stroke: '#000', strokeThickness: 6 
