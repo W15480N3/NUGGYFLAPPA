@@ -24,15 +24,15 @@
     <div id="ui-layer">
         <div id="start-menu" class="menu">
             <h1>HoppyNug</h1>
-            <div class="creator-tag">702WISH</div>
+            <div class="creator-tag">702WISH ORIGINALS</div>
             <p>VIVA LAS VEGAS</p>
             <div style="margin: 10px 0;">RECORD: <span id="best-score-start">0</span></div>
             <button id="start-btn">START BLAZING</button>
         </div>
 
         <div id="game-over" class="menu" style="display: none;">
-            <h1>Cashed</h1>
-            <div class="creator-tag">702WISH</div>
+            <h1>BUSTED!</h1>
+            <div class="creator-tag">BY 702WISH</div>
             <div style="margin: 10px 0;">SCORE: <span id="final-score">0</span></div>
             <div style="color: #4ade80;">BEST: <span id="best-score-over">0</span></div>
             <button id="retry-btn">TRY AGAIN</button>
@@ -86,7 +86,7 @@ const config = {
     pixelArt: true,
     physics: { 
         default: 'arcade', 
-        arcade: { gravity: { y: 1300 }, debug: true } // DEBUG ON to see new boxes
+        arcade: { gravity: { y: 1300 }, debug: true } // DEBUG ON
     }, 
     scene: { preload: preload, create: create, update: update }
 };
@@ -122,10 +122,11 @@ function create() {
         speed: { min: 20, max: 40 },
         angle: { min: 160, max: 200 },
         frequency: 50
-    });
+    }).setDepth(5); // Smoke behind Nug
 
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
+    // Fair player hitbox baseline
     player.body.setSize(130, 130).setOffset(265, 75); 
     player.body.allowGravity = false;
     player.setDepth(20);
@@ -161,6 +162,7 @@ function update() {
         return;
     }
 
+    // Player smoke trail
     smokeParticles.emitParticleAt(player.x - 20, player.y);
 
     if (player.y > 600 || player.y < 0) gameOver.call(this);
@@ -205,6 +207,7 @@ function spawnLighter() {
     lighter.body.allowGravity = false;
     lighter.setVelocityX(speed);
     lighter.setScale(0.07); 
+    // Small lighter hitbox baseline
     lighter.body.setCircle(lighter.width * 0.15); 
     lighter.body.setOffset(lighter.width * 0.35, lighter.height * 0.35);
     lighter.startY = randomY;
@@ -230,11 +233,28 @@ function spawnBongs() {
     botBong.body.allowGravity = false;
     topBong.setVelocityX(-240);
     botBong.setVelocityX(-240);
+    topBong.setDepth(8);
+    botBong.setDepth(8);
 
-    // --- NEW TUNED BONG HITBOXES ---
-    // Making them narrower (40px) and shorter (300px) so they don't hit you from the void
-    topBong.body.setSize(40, 300).setOffset(335, 120); 
-    botBong.body.setSize(40, 300).setOffset(335, 10);
+    // --- FAIR BONG HITBOXES (The "Gap" Fix) ---
+    // The previous offsets were pushing the boxes into the gap, creating invisible barriers.
+    // I have reset the offsets (y:0) and shortened the boxes (300px) so the gap is clear.
+    topBong.body.setSize(40, 300).setOffset(335, 0); // Reverted offset baseline for fair gaps
+    botBong.body.setSize(40, 300).setOffset(335, 0); // Reverted offset baseline for fair gaps
+
+    // --- NEW BONG SMOKE PARTICLES ---
+    // Smoke comes out of the *mouthpiece* (The top of the bottom bong, and the bottom of the flipped top bong).
+    this.time.addEvent({
+        delay: 50, repeat: 30, // Emit smoke 30 times over 1.5s
+        callback: () => {
+            if (botBong.active) {
+                // Smoke from bot bong nozzle
+                smokeParticles.emitParticleAt(botBong.x, botBong.y + 10);
+                // Smoke from flipped top bong nozzle
+                smokeParticles.emitParticleAt(topBong.x, topBong.y - 10);
+            }
+        }
+    });
 }
 
 function startGame() {
