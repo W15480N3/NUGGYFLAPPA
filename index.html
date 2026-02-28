@@ -28,7 +28,7 @@
 
         <div id="game-over" class="menu" style="display: none;">
             <h1 style="color: #ff3333; margin:0;">WASTED</h1>
-            <p id="final-score" style="font-size: 24px; margin: 10px 0;">SCORE: 0</p>
+            <p id="final-score-text" style="font-size: 24px; margin: 10px 0;">SCORE: 0</p>
             <button id="retry-btn">RE-UP</button>
         </div>
     </div>
@@ -48,7 +48,7 @@ const config = {
 };
 
 let game = new Phaser.Game(config);
-let player, bongs, lighters, flames, smokeParticles, starGroup;
+let player, bongs, lighters, flames, smokeParticles, starGroup, scoreText;
 
 function preload() {
     this.load.image('nug', 'nug.png'); 
@@ -66,12 +66,11 @@ function preload() {
 }
 
 function create() {
-    // Sporadic Star Logic
+    // Sporadic Stars
     starGroup = this.add.group();
     this.time.addEvent({
-        delay: 350,
+        delay: 400,
         callback: () => {
-            if (!isStarted && starGroup.getLength() > 15) return;
             let star = this.add.image(420, Phaser.Math.Between(0, 600), 'pixel_star');
             let colors = [0x4ade80, 0xbf80ff, 0x4da6ff, 0xfbbf24, 0xffffff];
             star.setTint(Phaser.Utils.Array.GetRandom(colors)).setAlpha(Phaser.Math.FloatBetween(0.1, 0.4));
@@ -80,34 +79,32 @@ function create() {
         loop: true
     });
 
-    // Particle Manager
+    // Particle Manager for Horizontal Smoke
     smokeParticles = this.add.particles(0, 0, 'smoke_puff', {
-        scale: { start: 0.4, end: 1.5 },
+        scale: { start: 0.4, end: 1.8 },
         alpha: { start: 0.3, end: 0 },
-        lifespan: 800,
-        speed: { min: 10, max: 30 },
-        frequency: 60
+        lifespan: 1000,
+        speedX: { min: -100, max: -150 }, // Force it to move left behind the nug
+        speedY: { min: -10, max: 10 },
+        frequency: 50
     }).setDepth(5);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35);
-    // TIGHT CIRCULAR HITBOX
-    player.body.setCircle(60, 270, 80); 
+    player.body.setCircle(55, 275, 85); // Adjusted circle hitbox
     player.body.allowGravity = false;
 
-    this.scoreText = this.add.text(20, 20, '0', { fontSize: '42px', fill: '#4ade80', fontFamily: 'Arial Black' }).setAlpha(0.4).setDepth(100);
+    scoreText = this.add.text(20, 20, '0', { fontSize: '42px', fill: '#4ade80', fontFamily: 'Arial Black' }).setAlpha(0.3).setDepth(100);
 
     bongs = this.physics.add.group();
     lighters = this.physics.add.group();
     flames = this.physics.add.group();
 
-    // INPUT
     this.input.on('pointerdown', () => {
         if (!isStarted) return;
-        if (audioCtx.state === 'suspended') audioCtx.resume();
         player.setVelocityY(-420);
     });
 
-    // COLLISION FIX
+    // Overlap checks for fair deaths
     this.physics.add.overlap(player, bongs, gameOver, null, this);
     this.physics.add.overlap(player, lighters, gameOver, null, this);
     this.physics.add.overlap(player, flames, gameOver, null, this);
@@ -117,48 +114,67 @@ function create() {
 }
 
 function update() {
-    starGroup.getChildren().forEach(s => { s.x -= 0.8; if (s.x < -20) s.destroy(); });
+    starGroup.getChildren().forEach(s => { s.x -= 0.5; if (s.x < -20) s.destroy(); });
 
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 400) * 10;
         return;
     }
 
-    // Nug Smoke Trail - Fixed positioning
-    smokeParticles.emitParticleAt(player.x - 15, player.y + 5);
+    // Horizontal Smoke Trail
+    smokeParticles.emitParticleAt(player.x - 25, player.y);
 
     if (player.y > 600 || player.y < 0) gameOver.call(this);
 
     bongs.getChildren().forEach(bong => {
         if (bong.x < player.x && !bong.scored) {
             score += 0.5;
-            if(Math.floor(score) > Math.floor(score - 0.5)) this.scoreText.setText(Math.floor(score));
+            if(Math.floor(score) > Math.floor(score - 0.5)) scoreText.setText(Math.floor(score));
             bong.scored = true;
         }
         if (bong.x < -100) bong.destroy();
     });
+
+    lighters.getChildren().forEach((l, i) => {
+        let f = flames.getChildren()[i];
+        l.y = l.startY + Math.sin(this.time.now / 300) * 40;
+        if (f) { f.x = l.x - 20; f.y = l.y; }
+        if (l.x < -100) { l.destroy(); if (f) f.destroy(); }
+    });
+}
+
+function spawnLighter() {
+    if (!isStarted) return;
+    let y = Phaser.Math.Between(150, 450);
+    let l = lighters.create(500, y, 'lighter').setScale(0.08);
+    l.body.allowGravity = false;
+    l.setVelocityX(-200);
+    l.startY = y;
+    l.body.setCircle(20).setOffset(l.width*0.35, l.height*0.35);
+
+    let f = flames.create(l.x - 20, y, 'flame').setScale(0.08);
+    f.body.allowGravity = false;
+    f.setVelocityX(-200);
+    f.body.setSize(10,10);
 }
 
 function spawnBongs() {
     if (!isStarted) return;
-    const randomY = Phaser.Math.Between(150, 450);
-    const topBong = bongs.create(550, randomY - 145, 'bong').setOrigin(0.5, 1).setFlipY(true);
-    const botBong = bongs.create(550, randomY + 145, 'bong').setOrigin(0.5, 0);
-    
-    topBong.body.allowGravity = false; botBong.body.allowGravity = false;
-    topBong.setVelocityX(-240); botBong.setVelocityX(-240);
-    
-    // Tighten Bong Hitboxes
-    topBong.body.setSize(50, 400).setOffset(330, 0);
-    botBong.body.setSize(50, 400).setOffset(330, 0);
+    const y = Phaser.Math.Between(150, 450);
+    const top = bongs.create(550, y - 145, 'bong').setOrigin(0.5, 1).setFlipY(true);
+    const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0);
+    top.body.allowGravity = false; bot.body.allowGravity = false;
+    top.setVelocityX(-220); bot.setVelocityX(-220);
+    top.body.setSize(50, 380).setOffset(330, 0);
+    bot.body.setSize(50, 380).setOffset(330, 0);
 
-    // BONG SMOKE - Sparks from the mouth hole
+    // BONG SMOKE
     this.time.addEvent({
-        delay: 80, repeat: 20,
+        delay: 100, repeat: 15,
         callback: () => {
-            if (botBong.active) {
-                smokeParticles.emitParticleAt(botBong.x, botBong.y + 5);
-                smokeParticles.emitParticleAt(topBong.x, topBong.y - 5);
+            if (bot.active) {
+                smokeParticles.emitParticleAt(bot.x, bot.y + 5);
+                smokeParticles.emitParticleAt(top.x, top.y - 5);
             }
         }
     });
@@ -168,7 +184,8 @@ function startGame() {
     isStarted = true;
     player.body.allowGravity = true;
     document.getElementById('start-menu').style.display = 'none';
-    this.time.addEvent({ delay: 1800, callback: spawnBongs, callbackScope: this, loop: true });
+    this.time.addEvent({ delay: 2000, callback: spawnBongs, callbackScope: this, loop: true });
+    this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true });
 }
 
 function gameOver() {
@@ -179,7 +196,7 @@ function gameOver() {
     let final = Math.floor(score);
     if (final > highScore) localStorage.setItem('hoppyNugBest', final);
     document.getElementById('game-over').style.display = 'block';
-    document.getElementById('final-score').innerText = "SCORE: " + final;
+    document.getElementById('final-score-text').innerText = "SCORE: " + final;
 }
 </script>
 </body>
