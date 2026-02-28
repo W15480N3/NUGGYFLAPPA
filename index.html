@@ -3,53 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>HoppyNug - 702wish</title>
+    <title>HoppyNug Debug - 702wish</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
-        
-        .menu { 
-            pointer-events: auto; 
-            background: rgba(0, 15, 5, 0.95); 
-            border: 3px solid #4ade80; 
-            border-radius: 20px; 
-            padding: 40px; 
-            color: white; 
-            text-align: center; 
-            box-shadow: 0 0 30px rgba(74, 222, 128, 0.4); 
-            text-transform: uppercase; 
-        }
-
-        input#player-name { 
-            background: #000; 
-            border: 2px solid #4ade80; 
-            color: #4ade80; 
-            padding: 12px; 
-            font-size: 20px; 
-            border-radius: 8px; 
-            text-align: center; 
-            margin: 20px 0; 
-            width: 85%; 
-            outline: none; 
-            font-family: 'Orbitron', sans-serif; 
-        }
-
-        button { 
-            background: #4ade80; 
-            color: #000; 
-            border: none; 
-            padding: 15px; 
-            font-size: 22px; 
-            font-weight: 900; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            width: 100%; 
-            font-family: 'Orbitron', sans-serif; 
-        }
-
+        .menu { pointer-events: auto; background: rgba(0, 15, 5, 0.95); border: 3px solid #4ade80; border-radius: 20px; padding: 40px; color: white; text-align: center; box-shadow: 0 0 30px rgba(74, 222, 128, 0.4); text-transform: uppercase; }
+        input#player-name { background: #000; border: 2px solid #4ade80; color: #4ade80; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 85%; outline: none; font-family: 'Orbitron', sans-serif; }
+        button { background: #4ade80; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; }
         #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #4ade80; font-size: 24px; cursor: pointer; z-index: 1000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #4ade80; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -88,7 +51,23 @@ const nameInput = document.getElementById('player-name');
 nameInput.value = playerName;
 document.getElementById('best-display').innerText = "PERSONAL BEST: " + highScore;
 
-const config = { type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000000', physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: false } }, scene: { preload, create, update } };
+const config = { 
+    type: Phaser.AUTO, 
+    width: 400, 
+    height: 600, 
+    backgroundColor: '#000000', 
+    physics: { 
+        default: 'arcade', 
+        arcade: { 
+            gravity: { y: 1200 }, 
+            debug: true, // *** DEBUG IS NOW ON ***
+            debugShowBody: true,
+            debugShowStaticBody: true
+        } 
+    }, 
+    scene: { preload, create, update } 
+};
+
 let game = new Phaser.Game(config);
 let player, bongs, lighters, flames, smokeParticles, starGroup, scoreText, scoreBox;
 
@@ -111,14 +90,8 @@ function create() {
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(50, 280, 90); player.body.allowGravity = false;
 
-    // --- HUD: TEXT AND BOX ---
     scoreBox = this.add.graphics().setDepth(99);
-    scoreText = this.add.text(30, 30, '', { 
-        fontSize: '18px', 
-        fill: '#4ade80', 
-        fontFamily: 'Orbitron', 
-        fontWeight: '900' 
-    }).setDepth(100);
+    scoreText = this.add.text(30, 30, '', { fontSize: '18px', fill: '#4ade80', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
     scoreText.setShadow(0, 0, '#4ade80', 10, true, true);
 
     bongs = this.physics.add.group(); lighters = this.physics.add.group(); flames = this.physics.add.group();
@@ -143,9 +116,7 @@ function create() {
 function drawScoreBox(xOffset = 0, yOffset = 0) {
     scoreBox.clear();
     scoreBox.lineStyle(2, 0x4ade80, 0.8);
-    // Draw a box around the score text area
     scoreBox.strokeRect(20 + xOffset, 20 + yOffset, scoreText.width + 20, scoreText.height + 20);
-    // Add a tiny corner accent
     scoreBox.fillStyle(0x4ade80, 0.5);
     scoreBox.fillRect(20 + xOffset, 20 + yOffset, 5, 5);
 }
@@ -156,14 +127,12 @@ function triggerGlitch() {
     let offY = Phaser.Math.Between(-2, 2);
     scoreText.setPosition(30 + offX, 30 + offY);
     drawScoreBox(offX, offY);
-    if (Math.random() > 0.85) scoreText.setFill('#ff3333'); else scoreText.setFill('#4ade80'); 
 }
 
 function update() {
     starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
     
-    // Smooth snap back for glitch
     scoreText.setX(Phaser.Math.Linear(scoreText.x, 30, 0.15));
     drawScoreBox(scoreText.x - 30, scoreText.y - 30);
 
@@ -187,8 +156,6 @@ function update() {
     lighters.getChildren().forEach((l, i) => { let f = flames.getChildren()[i]; l.y = l.startY + Math.sin(this.time.now / 300) * 40; if (f) { f.x = l.x - 45; f.y = l.y; } if (l.x < -100) { l.destroy(); if (f) f.destroy(); } });
 }
 
-function spawnLighter() { if (!isStarted) return; let y = Phaser.Math.Between(150, 450); let l = lighters.create(500, y, 'lighter').setScale(0.08).setDepth(8); l.body.allowGravity = false; l.setVelocityX(-180); l.startY = y; l.body.setCircle(20).setOffset(l.width*0.35, l.height*0.35); let f = flames.create(l.x - 45, y, 'flame').setScale(0.08).setDepth(9); f.body.allowGravity = false; f.setVelocityX(-180); this.tweens.add({ targets: f, alpha: 0.2, duration: 50, yoyo: true, repeat: -1 }); }
-
 function spawnBongs() {
     if (!isStarted) return;
     const y = Phaser.Math.Between(150, 450);
@@ -196,6 +163,8 @@ function spawnBongs() {
     const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0).setDepth(7);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
+    
+    // CURRENT HITBOXES (Neck area)
     top.body.setSize(55, 380).setOffset(330, 0); 
     bot.body.setSize(55, 380).setOffset(330, 0);
 }
@@ -208,8 +177,7 @@ function startGame() {
     if (audioCtx.state === 'suspended') audioCtx.resume(); 
     isStarted = true; player.body.allowGravity = true; 
     document.getElementById('start-menu').style.display = 'none'; 
-    this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); 
-    this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); 
+    this.time.addEvent({ delay: 2200, callback: spawnBongs, loop: true }); 
 }
 
 function gameOver() { 
