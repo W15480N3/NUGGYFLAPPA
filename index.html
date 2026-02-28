@@ -33,7 +33,6 @@
     </div>
 
 <script>
-// --- AUDIO ENGINE ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
     const osc = audioCtx.createOscillator();
@@ -58,7 +57,6 @@ function playSound(type) {
     }
 }
 
-// --- CONFIG (DEBUG MODE IS ON FOR TESTING) ---
 const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
@@ -67,7 +65,7 @@ const config = {
         default: 'arcade', 
         arcade: { 
             gravity: { y: 1300 }, 
-            debug: true // TURN TO FALSE TO HIDE THE BLUE BOXES
+            debug: false // DEBUG IS NOW OFF
         } 
     }, 
     scene: { preload: preload, create: create, update: update }
@@ -76,7 +74,6 @@ const config = {
 let game = new Phaser.Game(config);
 let player, bongs, lighters, flames, background, score = 0, isStarted = false, lighterTimer, scoreText;
 
-// --- HIGH SCORE LOGIC ---
 let highScore = localStorage.getItem('highFlyerScore') || 0;
 document.getElementById('best-score-start').innerText = highScore;
 
@@ -94,11 +91,9 @@ function create() {
     background.tileScaleY = scaleFactor;
     background.tileScaleX = scaleFactor;
 
-    // --- PLAYER (JUMBO but tuned) ---
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
-    player.body.setSize(140, 140); // Slightly more forgiving than 180
-    player.body.setOffset(260, 70); 
+    player.body.setSize(140, 140).setOffset(260, 70); 
     player.body.allowGravity = false;
     player.setDepth(10);
 
@@ -134,14 +129,13 @@ function update() {
     
     lighters.getChildren().forEach((lighter, index) => {
         let flame = flames.getChildren()[index];
-        // Bobbing wave logic
         lighter.y = lighter.startY + Math.sin(this.time.now / 200) * 60;
         if (flame) {
-            // Re-sync flame to the nozzle of the scaled lighter
-            flame.x = lighter.x - (lighter.displayHeight * 0.8); 
+            // Updated sync for 0.07 scale
+            flame.x = lighter.x - (lighter.displayWidth * 0.45); 
             flame.y = lighter.y;
         }
-        if (lighter.x < -100) {
+        if (lighter.x < -150) {
             lighter.destroy();
             if (flame) flame.destroy();
         }
@@ -155,7 +149,7 @@ function update() {
             }
             bong.scored = true;
         }
-        if (bong.x < -100) bong.destroy();
+        if (bong.x < -150) bong.destroy();
     });
 }
 
@@ -171,21 +165,20 @@ function spawnLighter() {
     lighter.setDepth(9);
     lighter.startY = randomY; 
 
-    // --- FIXING THE 0.03 SCALE HITBOX ---
-    lighter.setScale(0.03); 
-    // Use a circle for the hitbox—it's much cleaner for scaled assets
-    lighter.body.setCircle(lighter.width * 0.15); 
-    lighter.body.setOffset(lighter.width * 0.35, lighter.height * 0.35);
+    // --- SCALE SET TO 0.07 ---
+    lighter.setScale(0.07); 
+    lighter.body.setCircle(lighter.width * 0.2); 
+    lighter.body.setOffset(lighter.width * 0.3, lighter.height * 0.3);
 
-    let flame = flames.create(lighter.x - 20, randomY, 'flame');
+    let flame = flames.create(lighter.x - 30, randomY, 'flame');
     flame.body.allowGravity = false;
     flame.setVelocityX(speed);
     flame.setDepth(11);
-    flame.setScale(0.03);
+    flame.setScale(0.07);
     
-    // Tiny flame hitbox
-    flame.body.setSize(flame.width * 0.1, flame.height * 0.1);
-    flame.body.setOffset(flame.width * 0.45, flame.height * 0.45);
+    // Flame hitbox tuning
+    flame.body.setSize(flame.width * 0.15, flame.height * 0.15);
+    flame.body.setOffset(flame.width * 0.42, flame.height * 0.42);
 
     this.tweens.add({
         targets: flame,
@@ -209,7 +202,6 @@ function spawnBongs() {
     topBong.setVelocityX(-240);
     botBong.setVelocityX(-240);
     
-    // Bong Hitboxes (standardized)
     topBong.body.setSize(50, 400).setOffset(330, 0);
     botBong.body.setSize(50, 400).setOffset(330, 0);
 }
