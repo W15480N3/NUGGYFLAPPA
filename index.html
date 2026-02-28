@@ -60,12 +60,12 @@ document.getElementById('best-display').innerText = "PERSONAL BEST: " + highScor
 
 const config = { 
     type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000000', 
-    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: true } }, 
+    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: false } }, 
     scene: { preload, create, update } 
 };
 
 let game = new Phaser.Game(config);
-let player, bongs, lighters, flames, smokeParticles, starGroup, scoreText, scoreBox;
+let player, bongs, lighters, flames, smokeParticlesUp, smokeParticlesDown, starGroup, scoreText, scoreBox;
 
 function preload() {
     this.load.image('nug', 'nug.png'); this.load.image('nug_active', 'nug_active.png'); 
@@ -79,8 +79,9 @@ function create() {
     starGroup = this.add.group();
     this.time.addEvent({ delay: 450, callback: () => { let star = this.add.image(420, Phaser.Math.Between(0, 600), 'pixel_star'); star.setAlpha(Phaser.Math.FloatBetween(0.1, 0.3)); starGroup.add(star); }, loop: true });
     
-    // Smoke Particles - BRIGHTER & LARGER
-    smokeParticles = this.add.particles(0, 0, 'smoke_puff', { scale: { start: 0.5, end: 1.8 }, alpha: { start: 0.8, end: 0 }, lifespan: 900, speedX: { min: -90, max: -140 }, frequency: -1 }).setDepth(5);
+    // TWO EMITTERS: One for shooting up, one for shooting down
+    smokeParticlesUp = this.add.particles(0, 0, 'smoke_puff', { scale: { start: 0.4, end: 1.6 }, alpha: { start: 0.7, end: 0 }, lifespan: 1000, speedY: { min: -250, max: -450 }, speedX: { min: -20, max: 20 }, frequency: -1 }).setDepth(5);
+    smokeParticlesDown = this.add.particles(0, 0, 'smoke_puff', { scale: { start: 0.4, end: 1.6 }, alpha: { start: 0.7, end: 0 }, lifespan: 1000, speedY: { min: 250, max: 450 }, speedX: { min: -20, max: 20 }, frequency: -1 }).setDepth(5);
     
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(45, 290, 95); player.body.allowGravity = false;
@@ -111,13 +112,20 @@ function update() {
     scoreText.setX(Phaser.Math.Linear(scoreText.x, 30, 0.15));
     drawScoreBox(scoreText.x - 30, scoreText.y - 30);
     
-    if (this.time.now % 60 < 20) smokeParticles.emitParticleAt(player.x - 25, player.y + 5);
+    // Nug Smoke (Drifts back)
+    if (this.time.now % 60 < 20) smokeParticlesUp.emitParticleAt(player.x - 25, player.y + 5);
     if (player.y > 600 || player.y < 0) gameOver.call(this);
     
     bongs.getChildren().forEach(bong => {
-        // Thick Bong Smoke Trail
-        if (bong.x > 0 && bong.x < 420 && this.time.now % 80 < 35) {
-            smokeParticles.emitParticleAt(bong.x, bong.y + (bong.flipY ? -15 : 15));
+        // Vertical Smoke from Mouthpieces
+        if (bong.x > 0 && bong.x < 420 && this.time.now % 100 < 30) {
+            if (bong.flipY) {
+                // Top Bong: Shoot DOWN
+                smokeParticlesDown.emitParticleAt(bong.x, bong.y + 10);
+            } else {
+                // Bottom Bong: Shoot UP
+                smokeParticlesUp.emitParticleAt(bong.x, bong.y - 10);
+            }
         }
         if (bong.x < player.x && !bong.scored) { score += 0.5; if(Math.floor(score) > Math.floor(score - 0.5)) { scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); playSfx('point'); } bong.scored = true; }
         if (bong.x < -100) bong.destroy();
@@ -140,11 +148,7 @@ function spawnLighter() {
     let y = Phaser.Math.Between(150, 450);
     let l = lighters.create(500, y, 'lighter').setScale(0.08).setDepth(8);
     l.body.allowGravity = false; l.setVelocityX(-180); l.startY = y;
-    
-    // --- MASSIVE LIGHTER HITBOX ---
-    // Radius 180, Offset adjusted to 90 to center the larger circle
     l.body.setCircle(180).setOffset(90, 90); 
-    
     let f = flames.create(l.x - 45, y, 'flame').setScale(0.08).setDepth(9);
     this.tweens.add({ targets: f, alpha: 0.2, duration: 50, yoyo: true, repeat: -1 }); 
 }
@@ -157,8 +161,6 @@ function spawnBongs() {
     const bot = bongs.create(550, y + gapSize, 'bong').setOrigin(0.5, 0);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
-
-    // --- BONG HITBOXES (Manually tweak x,y offsets here) ---
     top.body.setSize(80, 380).setOffset(320, 0); 
     bot.body.setSize(80, 380).setOffset(320, 0);
 }
