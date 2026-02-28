@@ -9,12 +9,12 @@
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Arial Black', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
-        .menu { pointer-events: auto; background: rgba(10, 30, 10, 0.95); border: 3px solid #fbbf24; border-radius: 20px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 30px #fbbf24; }
+        .menu { pointer-events: auto; background: rgba(0, 20, 0, 0.9); border: 3px solid #4ade80; border-radius: 20px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 30px #4ade80; }
         h1 { color: #4ade80; margin: 0; font-size: 42px; text-shadow: 0 0 15px #4ade80; }
         .creator-tag { font-size: 14px; color: #fbbf24; margin-top: 5px; letter-spacing: 2px; font-weight: bold; }
         button { background: #fbbf24; color: #000; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 20px; transition: 0.2s; }
         button:hover { transform: scale(1.1); background: #4ade80; }
-        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; background: rgba(0,0,0,0.6); color: white; border: 2px solid white; padding: 10px; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; background: rgba(255,255,255,0.1); color: white; border: 1px solid white; padding: 10px; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -25,17 +25,17 @@
         <div id="start-menu" class="menu">
             <h1>HoppyNug</h1>
             <div class="creator-tag">702WISH ORIGINALS</div>
-            <p>VIVA LAS VEGAS</p>
+            <p>SPACE TRIPPIN'</p>
             <div style="margin: 10px 0;">RECORD: <span id="best-score-start">0</span></div>
-            <button id="start-btn">START BLAZING</button>
+            <button id="start-btn">IGNITION</button>
         </div>
 
         <div id="game-over" class="menu" style="display: none;">
-            <h1>BUSTED!</h1>
+            <h1>STAY HIGH!</h1>
             <div class="creator-tag">BY 702WISH</div>
             <div style="margin: 10px 0;">SCORE: <span id="final-score">0</span></div>
             <div style="color: #4ade80;">BEST: <span id="best-score-over">0</span></div>
-            <button id="retry-btn">TRY AGAIN</button>
+            <button id="retry-btn">RE-LIGHT</button>
         </div>
     </div>
 
@@ -84,15 +84,16 @@ const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
     pixelArt: true,
+    backgroundColor: '#000000',
     physics: { 
         default: 'arcade', 
-        arcade: { gravity: { y: 1300 }, debug: false } // DEBUG OFF
+        arcade: { gravity: { y: 1300 }, debug: false } 
     }, 
     scene: { preload: preload, create: create, update: update }
 };
 
 let game = new Phaser.Game(config);
-let player, bongs, lighters, flames, background, score = 0, isStarted = false, lighterTimer, scoreText, smokeParticles;
+let player, bongs, lighters, flames, stars, score = 0, isStarted = false, lighterTimer, scoreText, smokeParticles;
 
 let highScore = localStorage.getItem('hoppyNugBest') || 0;
 document.getElementById('best-score-start').innerText = highScore;
@@ -100,20 +101,28 @@ document.getElementById('best-score-start').innerText = highScore;
 function preload() {
     this.load.image('nug', 'nug.png'); 
     this.load.image('bong', 'bong.png'); 
-    this.load.image('vegas', 'vegas.png?v=' + Date.now()); 
     this.load.image('lighter', 'lighter.png'); 
     this.load.image('flame', 'flame.png'); 
     
-    let gfx = this.make.graphics();
-    gfx.fillStyle(0xffffff, 0.4); gfx.fillCircle(10, 10, 10);
-    gfx.generateTexture('smoke', 20, 20);
+    // Create Smoke Particle Texture
+    let smokeGfx = this.make.graphics();
+    smokeGfx.fillStyle(0xffffff, 0.4); smokeGfx.fillCircle(10, 10, 10);
+    smokeGfx.generateTexture('smoke', 20, 20);
+
+    // Create Star Texture (Small white square/circle)
+    let starGfx = this.make.graphics();
+    starGfx.fillStyle(0xffffff, 1); starGfx.fillCircle(2, 2, 2);
+    starGfx.generateTexture('star', 4, 4);
 }
 
 function create() {
-    background = this.add.tileSprite(0, 0, 400, 600, 'vegas').setOrigin(0, 0);
-    let scaleFactor = 600 / background.height;
-    background.tileScaleY = scaleFactor;
-    background.tileScaleX = scaleFactor;
+    // --- STAR BACKGROUND ---
+    // We use a TileSprite with the generated 'star' texture
+    stars = this.add.tileSprite(0, 0, 400, 600, 'star').setOrigin(0, 0);
+    // Add some random variety by placing individual static stars too
+    for(let i=0; i<50; i++) {
+        this.add.image(Phaser.Math.Between(0, 400), Phaser.Math.Between(0, 600), 'star').setAlpha(Phaser.Math.Between(2, 8)/10);
+    }
 
     smokeParticles = this.add.particles(0, 0, 'smoke', {
         scale: { start: 0.5, end: 2 },
@@ -154,7 +163,8 @@ function create() {
 }
 
 function update() {
-    background.tilePositionX += 2; 
+    // Scroll the stars slowly for a space feel
+    stars.tilePositionX += 0.5;
 
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 300) * 15;
@@ -236,12 +246,15 @@ function spawnBongs() {
     topBong.body.setSize(40, 300).setOffset(335, 0); 
     botBong.body.setSize(40, 300).setOffset(335, 0); 
 
+    // --- SMOKE EMITTERS (Moved closer to the "mouth hole") ---
     this.time.addEvent({
         delay: 50, repeat: 30, 
         callback: () => {
             if (botBong.active) {
-                smokeParticles.emitParticleAt(botBong.x, botBong.y + 10);
-                smokeParticles.emitParticleAt(topBong.x, topBong.y - 10);
+                // Bottom bong: Smoke comes from the top rim
+                smokeParticles.emitParticleAt(botBong.x, botBong.y + 5); 
+                // Top bong (flipped): Smoke comes from the bottom rim
+                smokeParticles.emitParticleAt(topBong.x, topBong.y - 5);
             }
         }
     });
