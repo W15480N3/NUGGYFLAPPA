@@ -38,12 +38,9 @@ let isMuted = false, score = 0, isStarted = false;
 let playerName = localStorage.getItem('hoppyNugName') || "";
 let highScore = parseInt(localStorage.getItem('hoppyNugBest')) || 0;
 
-// --- MUTE BUTTON LOGIC ---
 document.getElementById('mute-btn').onclick = function() {
     isMuted = !isMuted;
     this.innerText = isMuted ? "🔇" : "🔊";
-    if (isMuted && audioCtx.state === 'running') audioCtx.suspend();
-    else if (!isMuted && isStarted) audioCtx.resume();
 };
 
 function playSfx(type) {
@@ -88,10 +85,8 @@ function create() {
 
     scoreBox = this.add.graphics().setDepth(99);
     scoreText = this.add.text(30, 30, '', { fontSize: '18px', fill: '#4ade80', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
-    scoreText.setShadow(0, 0, '#4ade80', 10, true, true);
-
-    bongs = this.physics.add.group(); lighters = this.physics.add.group(); 
-    flames = this.add.group();
+    
+    bongs = this.physics.add.group(); lighters = this.physics.add.group(); flames = this.add.group();
     
     this.input.on('pointerdown', () => { if (!isStarted) return; player.setVelocityY(-410); playSfx('jump'); player.setTexture('nug_active'); this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); triggerGlitch(); });
     this.physics.add.overlap(player, bongs, gameOver, null, this);
@@ -106,7 +101,7 @@ function drawScoreBox(xOffset = 0, yOffset = 0) {
     scoreBox.strokeRect(20 + xOffset, 20 + yOffset, scoreText.width + 20, scoreText.height + 20);
 }
 
-function triggerGlitch() { if (!isStarted) return; scoreText.setX(20 + Phaser.Math.Between(-4, 4)); if (Math.random() > 0.85) scoreText.setFill('#ff3333'); else scoreText.setFill('#4ade80'); }
+function triggerGlitch() { if (!isStarted) return; scoreText.setX(20 + Phaser.Math.Between(-4, 4)); }
 
 function update() {
     starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
@@ -131,7 +126,8 @@ function spawnLighter() {
     let y = Phaser.Math.Between(150, 450);
     let l = lighters.create(500, y, 'lighter').setScale(0.08).setDepth(8);
     l.body.allowGravity = false; l.setVelocityX(-180); l.startY = y;
-    l.body.setCircle(28).setOffset(450, 200); 
+    // RE-CENTERED AND ENLARGED
+    l.body.setCircle(120).setOffset(150, 150); 
     let f = flames.create(l.x - 45, y, 'flame').setScale(0.08).setDepth(9);
     this.tweens.add({ targets: f, alpha: 0.2, duration: 50, yoyo: true, repeat: -1 }); 
 }
@@ -143,7 +139,7 @@ function spawnBongs() {
     const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
-    top.body.setSize(52, 380).setOffset(332, 0); bot.body.setSize(52, 380).setOffset(332, 0);
+    top.body.setSize(60, 380).setOffset(330, 0); bot.body.setSize(60, 380).setOffset(330, 0);
 }
 
 function startGame() { 
@@ -161,10 +157,7 @@ function gameOver() {
     isStarted = false; playSfx('crash'); this.physics.pause(); 
     player.setTint(0xff3333); player.setTexture('nug'); 
     let final = Math.floor(score);
-    if (final > highScore) {
-        highScore = final;
-        localStorage.setItem('hoppyNugBest', final);
-    }
+    if (final > highScore) localStorage.setItem('hoppyNugBest', final);
     document.getElementById('game-over').style.display = 'block'; 
     document.getElementById('final-score-text').innerText = "SCORE: " + final; 
 }
