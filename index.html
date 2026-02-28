@@ -9,12 +9,12 @@
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Arial Black', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
-        .menu { pointer-events: auto; background: rgba(0, 20, 0, 0.9); border: 3px solid #4ade80; border-radius: 20px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 30px #4ade80; }
+        .menu { pointer-events: auto; background: rgba(0, 10, 0, 0.9); border: 3px solid #4ade80; border-radius: 20px; padding: 30px; color: white; text-align: center; box-shadow: 0 0 30px #4ade80; }
         h1 { color: #4ade80; margin: 0; font-size: 42px; text-shadow: 0 0 15px #4ade80; }
         .creator-tag { font-size: 14px; color: #fbbf24; margin-top: 5px; letter-spacing: 2px; font-weight: bold; }
         button { background: #fbbf24; color: #000; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 20px; transition: 0.2s; }
         button:hover { transform: scale(1.1); background: #4ade80; }
-        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; background: rgba(255,255,255,0.1); color: white; border: 1px solid white; padding: 10px; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; background: rgba(255,255,255,0.05); color: #555; border: 1px solid #333; padding: 10px; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -25,7 +25,7 @@
         <div id="start-menu" class="menu">
             <h1>HoppyNug</h1>
             <div class="creator-tag">702WISH ORIGINALS</div>
-            <p>SPACE TRIPPIN'</p>
+            <p>CRUISING THE COSMOS</p>
             <div style="margin: 10px 0;">RECORD: <span id="best-score-start">0</span></div>
             <button id="start-btn">IGNITION</button>
         </div>
@@ -93,7 +93,7 @@ const config = {
 };
 
 let game = new Phaser.Game(config);
-let player, bongs, lighters, flames, stars, score = 0, isStarted = false, lighterTimer, scoreText, smokeParticles;
+let player, bongs, lighters, flames, tinyStars, bigStars, score = 0, isStarted = false, lighterTimer, scoreText, smokeParticles;
 
 let highScore = localStorage.getItem('hoppyNugBest') || 0;
 document.getElementById('best-score-start').innerText = highScore;
@@ -104,29 +104,30 @@ function preload() {
     this.load.image('lighter', 'lighter.png'); 
     this.load.image('flame', 'flame.png'); 
     
-    // Create Smoke Particle Texture
+    // Smoke
     let smokeGfx = this.make.graphics();
     smokeGfx.fillStyle(0xffffff, 0.4); smokeGfx.fillCircle(10, 10, 10);
     smokeGfx.generateTexture('smoke', 20, 20);
 
-    // Create Star Texture (Small white square/circle)
-    let starGfx = this.make.graphics();
-    starGfx.fillStyle(0xffffff, 1); starGfx.fillCircle(2, 2, 2);
-    starGfx.generateTexture('star', 4, 4);
+    // Dim Tiny Stars
+    let tinyGfx = this.make.graphics();
+    tinyGfx.fillStyle(0x444444, 1); tinyGfx.fillCircle(1, 1, 1);
+    tinyGfx.generateTexture('tinystar', 2, 2);
+
+    // Bright Big Stars
+    let bigGfx = this.make.graphics();
+    bigGfx.fillStyle(0xffffff, 0.8); bigGfx.fillCircle(2, 2, 2);
+    bigGfx.generateTexture('bigstar', 4, 4);
 }
 
 function create() {
-    // --- STAR BACKGROUND ---
-    // We use a TileSprite with the generated 'star' texture
-    stars = this.add.tileSprite(0, 0, 400, 600, 'star').setOrigin(0, 0);
-    // Add some random variety by placing individual static stars too
-    for(let i=0; i<50; i++) {
-        this.add.image(Phaser.Math.Between(0, 400), Phaser.Math.Between(0, 600), 'star').setAlpha(Phaser.Math.Between(2, 8)/10);
-    }
+    // Parallax Background
+    tinyStars = this.add.tileSprite(0, 0, 400, 600, 'tinystar').setOrigin(0, 0);
+    bigStars = this.add.tileSprite(0, 0, 400, 600, 'bigstar').setOrigin(0, 0);
 
     smokeParticles = this.add.particles(0, 0, 'smoke', {
         scale: { start: 0.5, end: 2 },
-        alpha: { start: 0.6, end: 0 },
+        alpha: { start: 0.4, end: 0 }, // Softer smoke
         lifespan: 800,
         speed: { min: 20, max: 40 },
         angle: { min: 160, max: 200 },
@@ -163,8 +164,9 @@ function create() {
 }
 
 function update() {
-    // Scroll the stars slowly for a space feel
-    stars.tilePositionX += 0.5;
+    // Parallax scrolling
+    tinyStars.tilePositionX += 0.2; // Slow dim stars
+    bigStars.tilePositionX += 0.8;  // Faster bright stars
 
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 300) * 15;
@@ -246,15 +248,13 @@ function spawnBongs() {
     topBong.body.setSize(40, 300).setOffset(335, 0); 
     botBong.body.setSize(40, 300).setOffset(335, 0); 
 
-    // --- SMOKE EMITTERS (Moved closer to the "mouth hole") ---
+    // Smoke perfectly at the rim
     this.time.addEvent({
         delay: 50, repeat: 30, 
         callback: () => {
             if (botBong.active) {
-                // Bottom bong: Smoke comes from the top rim
-                smokeParticles.emitParticleAt(botBong.x, botBong.y + 5); 
-                // Top bong (flipped): Smoke comes from the bottom rim
-                smokeParticles.emitParticleAt(topBong.x, topBong.y - 5);
+                smokeParticles.emitParticleAt(botBong.x, botBong.y + 2); 
+                smokeParticles.emitParticleAt(topBong.x, topBong.y - 2);
             }
         }
     });
