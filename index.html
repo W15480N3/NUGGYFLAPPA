@@ -33,6 +33,7 @@
     </div>
 
 <script>
+// --- AUDIO ENGINE ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playSound(type) {
     const osc = audioCtx.createOscillator();
@@ -57,11 +58,18 @@ function playSound(type) {
     }
 }
 
+// --- CONFIG (DEBUG MODE IS ON FOR TESTING) ---
 const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
     pixelArt: true,
-    physics: { default: 'arcade', arcade: { gravity: { y: 1300 }, debug: false } }, 
+    physics: { 
+        default: 'arcade', 
+        arcade: { 
+            gravity: { y: 1300 }, 
+            debug: true // TURN TO FALSE TO HIDE THE BLUE BOXES
+        } 
+    }, 
     scene: { preload: preload, create: create, update: update }
 };
 
@@ -86,9 +94,11 @@ function create() {
     background.tileScaleY = scaleFactor;
     background.tileScaleX = scaleFactor;
 
+    // --- PLAYER (JUMBO but tuned) ---
     player = this.physics.add.sprite(100, 300, 'nug');
     player.setScale(0.35);
-    player.body.setSize(180, 180).setOffset(240, 50); 
+    player.body.setSize(140, 140); // Slightly more forgiving than 180
+    player.body.setOffset(260, 70); 
     player.body.allowGravity = false;
     player.setDepth(10);
 
@@ -124,9 +134,10 @@ function update() {
     
     lighters.getChildren().forEach((lighter, index) => {
         let flame = flames.getChildren()[index];
+        // Bobbing wave logic
         lighter.y = lighter.startY + Math.sin(this.time.now / 200) * 60;
         if (flame) {
-            // Offset the flame to the "nose" of the scaled lighter
+            // Re-sync flame to the nozzle of the scaled lighter
             flame.x = lighter.x - (lighter.displayHeight * 0.8); 
             flame.y = lighter.y;
         }
@@ -160,16 +171,21 @@ function spawnLighter() {
     lighter.setDepth(9);
     lighter.startY = randomY; 
 
-    // --- EVEN SMALLER SCALE (3% of original) ---
+    // --- FIXING THE 0.03 SCALE HITBOX ---
     lighter.setScale(0.03); 
-    lighter.body.setSize(lighter.width * 0.7, lighter.height * 0.4);
+    // Use a circle for the hitbox—it's much cleaner for scaled assets
+    lighter.body.setCircle(lighter.width * 0.15); 
+    lighter.body.setOffset(lighter.width * 0.35, lighter.height * 0.35);
 
     let flame = flames.create(lighter.x - 20, randomY, 'flame');
     flame.body.allowGravity = false;
     flame.setVelocityX(speed);
     flame.setDepth(11);
     flame.setScale(0.03);
-    flame.body.setSize(flame.width * 0.4, flame.height * 0.6);
+    
+    // Tiny flame hitbox
+    flame.body.setSize(flame.width * 0.1, flame.height * 0.1);
+    flame.body.setOffset(flame.width * 0.45, flame.height * 0.45);
 
     this.tweens.add({
         targets: flame,
@@ -187,10 +203,15 @@ function spawnBongs() {
     const randomY = Phaser.Math.Between(150, 450);
     const topBong = bongs.create(spawnX, randomY - (gap / 2), 'bong').setOrigin(0.5, 1).setFlipY(true);
     const botBong = bongs.create(spawnX, randomY + (gap / 2), 'bong').setOrigin(0.5, 0);
+    
     topBong.body.allowGravity = false;
     botBong.body.allowGravity = false;
     topBong.setVelocityX(-240);
     botBong.setVelocityX(-240);
+    
+    // Bong Hitboxes (standardized)
+    topBong.body.setSize(50, 400).setOffset(330, 0);
+    botBong.body.setSize(50, 400).setOffset(330, 0);
 }
 
 function startGame() {
@@ -202,22 +223,22 @@ function startGame() {
     this.time.addEvent({ delay: 1800, callback: spawnBongs, callbackScope: this, loop: true });
     
     lighterTimer = this.time.addEvent({ 
-        delay: Phaser.Math.Between(2500, 5000), 
+        delay: Phaser.Math.Between(3000, 6000), 
         callback: () => {
             spawnLighter.call(this);
-            lighterTimer.delay = Phaser.Math.Between(2500, 5000); 
+            lighterTimer.delay = Phaser.Math.Between(3000, 6000); 
         }, 
         callbackScope: this, loop: true 
     });
 }
 
 function gameOver() {
+    if (!isStarted) return;
     isStarted = false;
     playSound('crash');
     this.physics.pause();
     player.setTint(0xff3333);
 
-    // Save High Score
     let finalScore = Math.floor(score);
     if (finalScore > highScore) {
         highScore = finalScore;
