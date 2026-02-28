@@ -9,11 +9,11 @@
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Arial Black', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 100; }
-        .menu { pointer-events: auto; background: rgba(0, 0, 0, 0.9); border: 1px solid #333; border-radius: 15px; padding: 30px; color: white; text-align: center; }
-        h1 { color: #4ade80; margin: 0; font-size: 38px; letter-spacing: -1px; }
-        .creator-tag { font-size: 12px; color: #fbbf24; margin-top: 5px; letter-spacing: 3px; font-weight: bold; opacity: 0.8; }
-        button { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 20px; text-transform: uppercase; }
-        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #444; font-size: 20px; cursor: pointer; opacity: 0.5; }
+        .menu { pointer-events: auto; background: rgba(0, 0, 0, 0.95); border: 2px solid #333; border-radius: 15px; padding: 30px; color: white; text-align: center; }
+        h1 { color: #4ade80; margin: 0; font-size: 38px; }
+        .creator-tag { font-size: 12px; color: #fbbf24; margin-top: 5px; letter-spacing: 3px; font-weight: bold; }
+        button { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 20px; }
+        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #444; font-size: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -24,65 +24,48 @@
         <div id="start-menu" class="menu">
             <h1>HoppyNug</h1>
             <div class="creator-tag">702WISH</div>
-            <div style="margin: 15px 0; font-size: 14px; color: #666;">BEST: <span id="best-score-start">0</span></div>
+            <div style="margin: 15px 0; color: #666;">BEST: <span id="best-score-start">0</span></div>
             <button id="start-btn">START</button>
         </div>
 
         <div id="game-over" class="menu" style="display: none;">
             <h1 style="color: #ff3333;">BUSTED</h1>
-            <div style="margin: 10px 0; font-size: 18px;">SCORE: <span id="final-score">0</span></div>
+            <div style="margin: 10px 0;">SCORE: <span id="final-score">0</span></div>
             <button id="retry-btn">RETRY</button>
         </div>
     </div>
 
 <script>
-let isMuted = false;
-let jackpotPlayed = false;
+let isMuted = false, jackpotPlayed = false, score = 0, isStarted = false;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const muteBtn = document.getElementById('mute-btn');
 
-muteBtn.onclick = () => {
-    isMuted = !isMuted;
-    muteBtn.innerText = isMuted ? '🔇' : '🔊';
-};
+muteBtn.onclick = () => { isMuted = !isMuted; muteBtn.innerText = isMuted ? '🔇' : '🔊'; };
 
 function playSound(type) {
     if (isMuted) return;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
     const now = audioCtx.currentTime;
     if (type === 'flap') {
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(140, now);
-        gain.gain.setValueAtTime(0.03, now); gain.gain.linearRampToValueAtTime(0, now + 0.1);
+        osc.frequency.setValueAtTime(140, now); gain.gain.setValueAtTime(0.03, now);
         osc.start(); osc.stop(now + 0.1);
-    } else if (type === 'jackpot') {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(523, now);
-        osc.frequency.setValueAtTime(783, now + 0.1);
-        gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-        osc.start(); osc.stop(now + 0.3);
     } else if (type === 'crash') {
         osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
-        osc.frequency.exponentialRampToValueAtTime(40,- now + 0.2);
-        gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
-        osc.start(); osc.stop(now + 0.2);
+        gain.gain.setValueAtTime(0.05, now); osc.start(); osc.stop(now + 0.2);
     }
 }
 
 const config = {
     type: Phaser.AUTO,
     width: 400, height: 600,
-    pixelArt: true,
     backgroundColor: '#000000',
     physics: { default: 'arcade', arcade: { gravity: { y: 1300 } } }, 
     scene: { preload: preload, create: create, update: update }
 };
 
 let game = new Phaser.Game(config);
-let player, bongs, lighters, flames, spaceDust, colorStars, score = 0, isStarted = false, scoreText, smokeParticles;
-
-let highScore = localStorage.getItem('hoppyNugBest') || 0;
-document.getElementById('best-score-start').innerText = highScore;
+let player, bongs, lighters, flames, scoreText, smokeParticles, starGroup;
 
 function preload() {
     this.load.image('nug', 'nug.png'); 
@@ -90,58 +73,40 @@ function preload() {
     this.load.image('lighter', 'lighter.png'); 
     this.load.image('flame', 'flame.png'); 
     
-    // Soft Smoke
-    let smokeGfx = this.make.graphics();
-    smokeGfx.fillStyle(0xffffff, 0.2); smokeGfx.fillCircle(8, 8, 8);
-    smokeGfx.generateTexture('smoke', 16, 16);
-
-    // Subtle Dust (keep the base layer)
-    let dustGfx = this.make.graphics();
-    dustGfx.fillStyle(0x222222, 1); dustGfx.fillCircle(1, 1, 1);
-    dustGfx.generateTexture('dust', 2, 2);
-
-    // --- NEW: GENERATE MULTICOLOR STAR TEXTURE ---
-    // Instead of white, we generate four distinct colors.
-    let starGfx = this.make.graphics();
-    const colors = [0x4ade80, 0xbf80ff, 0x4da6ff, 0xfbbf24]; // Neon Green, Purple, Blue, Gold
-
-    colors.forEach((color, index) => {
-        // Place a small circle for each color at a unique X position (0, 8, 16, 24).
-        starGfx.fillStyle(color, 1);
-        starGfx.fillCircle((index * 8) + 3, 3, 3);
-    });
-
-    // Generate a wide texture (32x8) containing all four colors.
-    // This allows the tileSprite to randomly tile different colored stars.
-    starGfx.generateTexture('colorstar', 32, 8);
+    let g = this.make.graphics();
+    g.fillStyle(0xffffff, 1); g.fillCircle(2, 2, 2);
+    g.generateTexture('star_white', 4, 4);
 }
 
 function create() {
-    // 1. Ultra subtle dust (10% opacity, base layer)
-    spaceDust = this.add.tileSprite(0, 0, 400, 600, 'dust').setOrigin(0, 0).setAlpha(0.1);
+    // --- SPORADIC BACKGROUND ---
+    starGroup = this.add.group();
+    this.time.addEvent({
+        delay: 400,
+        callback: () => {
+            if (starGroup.getLength() < 20) {
+                let s = this.add.image(420, Phaser.Math.Between(0, 600), 'star_white');
+                const colors = [0x4ade80, 0xbf80ff, 0x4da6ff, 0xfbbf24, 0xffffff];
+                s.setTint(Phaser.Utils.Array.GetRandom(colors));
+                s.setAlpha(Phaser.Math.FloatBetween(0.1, 0.4));
+                starGroup.add(s);
+            }
+        },
+        loop: true
+    });
 
-    // 2. --- NEW: ADD SCROLLING MULTICOLOR STARLAYER ---
-    // We add this layer on top of the dust, but set low opacity so it stays subtle.
-    // Since the texture is multicolor, the tiling will look like a randomized starry void.
-    colorStars = this.add.tileSprite(0, 0, 400, 600, 'colorstar').setOrigin(0, 0).setAlpha(0.15); // Set slightly brighter than dust
-
-    smokeParticles = this.add.particles(0, 0, 'smoke', {
-        scale: { start: 0.3, end: 1.2 },
+    smokeParticles = this.add.particles(0, 0, 'nug', { // Using nug for smoke texture or pregen
+        scale: { start: 0.1, end: 0 },
         alpha: { start: 0.2, end: 0 },
         lifespan: 600,
-        speed: { min: 5, max: 20 },
         frequency: 80
     }).setDepth(5); 
 
-    player = this.physics.add.sprite(100, 300, 'nug');
-    player.setScale(0.35);
+    player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35);
     player.body.setSize(120, 120).setOffset(270, 80); 
     player.body.allowGravity = false;
-    player.setDepth(20);
 
-    scoreText = this.add.text(20, 20, '0', { 
-        fontSize: '40px', fill: '#4ade80', fontFamily: 'Arial Black'
-    }).setDepth(100).setAlpha(0.5);
+    scoreText = this.add.text(20, 20, '0', { fontSize: '40px', fill: '#4ade80', fontFamily: 'Arial Black' }).setAlpha(0.5);
 
     bongs = this.physics.add.group();
     lighters = this.physics.add.group();
@@ -154,20 +119,23 @@ function create() {
         playSound('flap');
     });
 
-    this.physics.add.collider(player, bongs, gameOver, null, this);
-    this.physics.add.collider(player, flames, gameOver, null, this);
-    this.physics.add.collider(player, lighters, gameOver, null, this);
+    // COLLIDERS
+    this.physics.add.overlap(player, bongs, gameOver, null, this);
+    this.physics.add.overlap(player, flames, gameOver, null, this);
+    this.physics.add.overlap(player, lighters, gameOver, null, this);
 
     document.getElementById('start-btn').onclick = () => startGame.call(this);
     document.getElementById('retry-btn').onclick = () => window.location.reload();
+    
+    let high = localStorage.getItem('hoppyNugBest') || 0;
+    document.getElementById('best-score-start').innerText = high;
 }
 
 function update() {
-    spaceDust.tilePositionX += 0.05; 
-    
-    // --- NEW: SCROLL THE COLOR STARS (Parallax) ---
-    // The stars move slightly faster than the background dust for depth.
-    colorStars.tilePositionX += 0.1; // Slow, hypnotic travel
+    starGroup.getChildren().forEach(s => {
+        s.x -= 1;
+        if (s.x < -20) s.destroy();
+    });
 
     if (!isStarted) {
         player.y = 300 + Math.sin(this.time.now / 400) * 10;
@@ -175,21 +143,7 @@ function update() {
     }
 
     smokeParticles.emitParticleAt(player.x - 10, player.y);
-
     if (player.y > 600 || player.y < 0) gameOver.call(this);
-    
-    if (Math.floor(score) > highScore && !jackpotPlayed && highScore > 0) {
-        playSound('jackpot');
-        jackpotPlayed = true;
-        scoreText.setFill('#fbbf24').setAlpha(1);
-    }
-
-    lighters.getChildren().forEach((lighter, index) => {
-        let flame = flames.getChildren()[index];
-        lighter.y = lighter.startY + Math.sin(this.time.now / 250) * 50;
-        if (flame) { flame.x = lighter.x - 25; flame.y = lighter.y; }
-        if (lighter.x < -100) { lighter.destroy(); if (flame) flame.destroy(); }
-    });
 
     bongs.getChildren().forEach(bong => {
         if (bong.x < player.x && !bong.scored) {
@@ -201,54 +155,20 @@ function update() {
     });
 }
 
-function spawnLighter() {
-    if (!isStarted) return;
-    let randomY = Phaser.Math.Between(150, 450);
-    let lighter = lighters.create(500, randomY, 'lighter');
-    lighter.body.allowGravity = false;
-    lighter.setVelocityX(-350);
-    lighter.setScale(0.07); 
-    lighter.body.setCircle(20).setOffset(lighter.width*0.35, lighter.height*0.35);
-    lighter.startY = randomY;
-
-    let flame = flames.create(lighter.x - 25, randomY, 'flame');
-    flame.body.allowGravity = false;
-    flame.setVelocityX(-350);
-    flame.setScale(0.07);
-    flame.body.setSize(10, 10).setOffset(flame.width*0.45, flame.height*0.45);
-    this.tweens.add({ targets: flame, alpha: 0.3, duration: 80, yoyo: true, repeat: -1 });
-}
-
 function spawnBongs() {
     if (!isStarted) return;
     const randomY = Phaser.Math.Between(150, 450);
     const topBong = bongs.create(550, randomY - 140, 'bong').setOrigin(0.5, 1).setFlipY(true);
     const botBong = bongs.create(550, randomY + 140, 'bong').setOrigin(0.5, 0);
-    
     topBong.body.allowGravity = false; botBong.body.allowGravity = false;
     topBong.setVelocityX(-240); botBong.setVelocityX(-240);
-    topBong.body.setSize(40, 300).setOffset(335, 0); 
-    botBong.body.setSize(40, 300).setOffset(335, 0); 
-
-    this.time.addEvent({
-        delay: 60, repeat: 25, 
-        callback: () => {
-            if (botBong.active) {
-                // Internal smoke baseline
-                smokeParticles.emitParticleAt(botBong.x, botBong.y - 15); 
-                smokeParticles.emitParticleAt(topBong.x, topBong.y + 15);
-            }
-        }
-    });
 }
 
 function startGame() {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    document.getElementById('start-menu').style.display = 'none';
     isStarted = true;
     player.body.allowGravity = true;
+    document.getElementById('start-menu').style.display = 'none';
     this.time.addEvent({ delay: 1800, callback: spawnBongs, callbackScope: this, loop: true });
-    this.time.addEvent({ delay: 4500, callback: spawnLighter, callbackScope: this, loop: true });
 }
 
 function gameOver() {
@@ -258,7 +178,8 @@ function gameOver() {
     this.physics.pause();
     player.setTint(0xff3333);
     let finalScore = Math.floor(score);
-    if (finalScore > highScore) localStorage.setItem('hoppyNugBest', finalScore);
+    let high = localStorage.getItem('hoppyNugBest') || 0;
+    if (finalScore > high) localStorage.setItem('hoppyNugBest', finalScore);
     document.getElementById('game-over').style.display = 'block';
     document.getElementById('final-score').innerText = finalScore;
 }
