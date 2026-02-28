@@ -41,42 +41,28 @@ let isMuted = false;
 
 function playSfx(type) {
     if (isMuted || audioCtx.state === 'suspended') return;
-    
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
     const now = audioCtx.currentTime;
 
     if (type === 'jump') {
-        osc.type = 'triangle';
-        // Louder and deeper "thud"
-        osc.frequency.setValueAtTime(180, now);
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(180, now);
         osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
-        gain.gain.setValueAtTime(0.4, now); // Increased from 0.1 to 0.4
-        gain.gain.linearRampToValueAtTime(0, now + 0.15);
+        gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0, now + 0.15);
         osc.start(); osc.stop(now + 0.15);
-    } 
-    else if (type === 'point') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, now);
+    } else if (type === 'point') {
+        osc.type = 'sine'; osc.frequency.setValueAtTime(600, now);
         osc.frequency.exponentialRampToValueAtTime(900, now + 0.1);
-        gain.gain.setValueAtTime(0.08, now);
-        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        gain.gain.setValueAtTime(0.08, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
         osc.start(); osc.stop(now + 0.2);
-    }
-    else if (type === 'crash') {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(100, now);
+    } else if (type === 'crash') {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
         osc.frequency.linearRampToValueAtTime(20, now + 0.4);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.linearRampToValueAtTime(0, now + 0.4);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4);
         osc.start(); osc.stop(now + 0.4);
-    }
-    else if (type === 'high') {
+    } else if (type === 'high') {
         [523, 659, 783, 1046].forEach((f, i) => {
-            const o = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
+            const o = audioCtx.createOscillator(), g = audioCtx.createGain();
             o.connect(g); g.connect(audioCtx.destination);
             o.frequency.setValueAtTime(f, now + (i * 0.1));
             g.gain.setValueAtTime(0.1, now + (i * 0.1));
@@ -87,10 +73,7 @@ function playSfx(type) {
 }
 
 const muteBtn = document.getElementById('mute-btn');
-muteBtn.onclick = () => {
-    isMuted = !isMuted;
-    muteBtn.innerText = isMuted ? '🔇' : '🔊';
-};
+muteBtn.onclick = () => { isMuted = !isMuted; muteBtn.innerText = isMuted ? '🔇' : '🔊'; };
 
 let score = 0, isStarted = false, highScore = localStorage.getItem('hoppyNugBest') || 0, scoreMilestone = false;
 document.getElementById('best-display').innerText = "RECORD: " + highScore;
@@ -111,38 +94,38 @@ function preload() {
     this.load.image('bong', 'bong.png'); 
     this.load.image('lighter', 'lighter.png'); 
     this.load.image('flame', 'flame.png'); 
-    let g = this.make.graphics();
-    g.fillStyle(0xffffff, 0.4); g.fillCircle(8, 8, 8);
+    let g = this.make.graphics(); g.fillStyle(0xffffff, 0.4); g.fillCircle(8, 8, 8);
     g.generateTexture('smoke_puff', 16, 16);
-    let s = this.make.graphics();
-    s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2);
+    let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2);
     s.generateTexture('pixel_star', 4, 4);
 }
 
 function create() {
+    // Background Stars (Lowest depth)
     starGroup = this.add.group();
-    this.time.addEvent({
-        delay: 450,
-        callback: () => {
+    this.time.addEvent({ delay: 450, callback: () => {
             let star = this.add.image(420, Phaser.Math.Between(0, 600), 'pixel_star');
             let colors = [0x4ade80, 0xbf80ff, 0x4da6ff, 0xfbbf24, 0xffffff];
-            star.setTint(Phaser.Utils.Array.GetRandom(colors)).setAlpha(Phaser.Math.FloatBetween(0.1, 0.3));
+            star.setTint(Phaser.Utils.Array.GetRandom(colors)).setAlpha(Phaser.Math.FloatBetween(0.1, 0.3)).setDepth(0);
             starGroup.add(star);
-        }, loop: true
-    });
+        }, loop: true });
 
+    // Smoke Particles (Depth 5 - BEHIND Nug, but in front of stars)
     smokeParticles = this.add.particles(0, 0, 'smoke_puff', {
         scale: { start: 0.4, end: 1.8 },
         alpha: { start: 0.3, end: 0 },
         lifespan: 800,
         speedX: { min: -120, max: -180 },
         frequency: 50
-    }).setDepth(5);
+    }).setDepth(5); // *** FIX APPLIED HERE: Depths rearranged ***
 
+    // Player (Depth 10 - IN FRONT of smoke trail)
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35);
     player.body.setCircle(50, 280, 90); 
     player.body.allowGravity = false;
+    player.setDepth(10); // *** FIX APPLIED HERE: Depths rearranged ***
 
+    // Score Text (Top depth)
     scoreText = this.add.text(20, 20, '0', { fontSize: '42px', fill: '#4ade80', fontFamily: 'Arial Black' }).setAlpha(0.3).setDepth(100);
 
     bongs = this.physics.add.group();
@@ -168,21 +151,16 @@ function update() {
     starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
 
-    smokeParticles.emitParticleAt(player.x - 20, player.y);
+    // Particle emission point (Adjusted so it comes from the butt)
+    smokeParticles.emitParticleAt(player.x - 25, player.y + 10);
     if (player.y > 600 || player.y < 0) gameOver.call(this);
 
     bongs.getChildren().forEach(bong => {
         if (bong.x < player.x && !bong.scored) {
             score += 0.5;
             if(Math.floor(score) > Math.floor(score - 0.5)) {
-                let s = Math.floor(score);
-                scoreText.setText(s);
-                playSfx('point');
-                if (s > highScore && !scoreMilestone && highScore > 0) {
-                    playSfx('high');
-                    scoreMilestone = true;
-                    scoreText.setAlpha(1).setFill('#fbbf24');
-                }
+                let s = Math.floor(score); scoreText.setText(s); playSfx('point');
+                if (s > highScore && !scoreMilestone && highScore > 0) { playSfx('high'); scoreMilestone = true; scoreText.setAlpha(1).setFill('#fbbf24'); }
             }
             bong.scored = true;
         }
@@ -190,8 +168,7 @@ function update() {
     });
 
     lighters.getChildren().forEach((l, i) => {
-        let f = flames.getChildren()[i];
-        l.y = l.startY + Math.sin(this.time.now / 300) * 40;
+        let f = flames.getChildren()[i]; l.y = l.startY + Math.sin(this.time.now / 300) * 40;
         if (f) { f.x = l.x - 45; f.y = l.y; }
         if (l.x < -100) { l.destroy(); if (f) f.destroy(); }
     });
@@ -200,10 +177,10 @@ function update() {
 function spawnLighter() {
     if (!isStarted) return;
     let y = Phaser.Math.Between(150, 450);
-    let l = lighters.create(500, y, 'lighter').setScale(0.08);
+    let l = lighters.create(500, y, 'lighter').setScale(0.08).setDepth(8);
     l.body.allowGravity = false; l.setVelocityX(-180); l.startY = y;
     l.body.setCircle(20).setOffset(l.width*0.35, l.height*0.35);
-    let f = flames.create(l.x - 45, y, 'flame').setScale(0.08);
+    let f = flames.create(l.x - 45, y, 'flame').setScale(0.08).setDepth(9);
     f.body.allowGravity = false; f.setVelocityX(-180); f.body.setSize(10,10);
     this.tweens.add({ targets: f, alpha: 0.2, duration: 50, yoyo: true, repeat: -1 });
 }
@@ -211,44 +188,24 @@ function spawnLighter() {
 function spawnBongs() {
     if (!isStarted) return;
     const y = Phaser.Math.Between(150, 450);
-    const top = bongs.create(550, y - 145, 'bong').setOrigin(0.5, 1).setFlipY(true);
-    const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0);
+    const top = bongs.create(550, y - 145, 'bong').setOrigin(0.5, 1).setFlipY(true).setDepth(7);
+    const bot = bongs.create(550, y + 145, 'bong').setOrigin(0.5, 0).setDepth(7);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
-    top.body.setSize(55, 380).setOffset(330, 0);
-    bot.body.setSize(55, 380).setOffset(330, 0);
+    top.body.setSize(55, 380).setOffset(330, 0); bot.body.setSize(55, 380).setOffset(330, 0);
 
-    this.time.addEvent({
-        delay: 100, repeat: 10,
-        callback: () => {
+    this.time.addEvent({ delay: 100, repeat: 10, callback: () => {
             if (bot.active) {
-                smokeParticles.emitParticleAt(bot.x, bot.y + 2);
-                smokeParticles.emitParticleAt(top.x, top.y - 2);
+                // Bong smoke emissions (Lower depth than trail)
+                this.add.particles(bot.x, bot.y + 2, 'smoke_puff', { lifespan: 500, scale: { start: 0.2, end: 0.5 }, speed: 10, count: 1 }).setDepth(4);
+                this.add.particles(top.x, top.y - 2, 'smoke_puff', { lifespan: 500, scale: { start: 0.2, end: 0.5 }, speed: 10, count: 1 }).setDepth(4);
             }
-        }
-    });
+        } });
 }
 
-function startGame() {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    isStarted = true;
-    player.body.allowGravity = true;
-    document.getElementById('start-menu').style.display = 'none';
-    this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true });
-    this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true });
-}
+function startGame() { if (audioCtx.state === 'suspended') audioCtx.resume(); isStarted = true; player.body.allowGravity = true; document.getElementById('start-menu').style.display = 'none'; this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); }
 
-function gameOver() {
-    if (!isStarted) return;
-    isStarted = false;
-    playSfx('crash');
-    this.physics.pause();
-    player.setTint(0xff3333);
-    let final = Math.floor(score);
-    if (final > highScore) localStorage.setItem('hoppyNugBest', final);
-    document.getElementById('game-over').style.display = 'block';
-    document.getElementById('final-score-text').innerText = "SCORE: " + final;
-}
+function gameOver() { if (!isStarted) return; isStarted = false; playSfx('crash'); this.physics.pause(); player.setTint(0xff3333); let final = Math.floor(score); if (final > highScore) localStorage.setItem('hoppyNugBest', final); document.getElementById('game-over').style.display = 'block'; document.getElementById('final-score-text').innerText = "SCORE: " + final; }
 </script>
 </body>
 </html>
