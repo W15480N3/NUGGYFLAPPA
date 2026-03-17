@@ -14,11 +14,21 @@
         input#player-name { background: #000; border: 2px solid #4ade80; color: #4ade80; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 85%; outline: none; font-family: 'Orbitron', sans-serif; }
         button { background: #4ade80; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; }
         #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #4ade80; font-size: 24px; cursor: pointer; z-index: 1000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #4ade80; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; user-select: none; }
+        
+        /* Event Record Styling */
+        #session-record { 
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            color: #ff3333; font-weight: 900; z-index: 101; font-size: 22px; 
+            text-shadow: 0 0 15px #ff3333; pointer-events: none; 
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; scale: 1.05; } 100% { opacity: 0.7; } }
     </style>
 </head>
 <body>
     <div id="mute-btn">🔊</div>
     <div id="ui-layer">
+        <div id="session-record">TENT RECORD: 0</div>
         <div id="start-menu" class="menu">
             <h1 style="color: #4ade80; margin:0; font-size: 46px; font-weight: 900;">HOPPYNUG</h1>
             <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
@@ -29,14 +39,19 @@
             <h1 style="color: #ff3333; margin:0; font-size: 40px;">CASHED OUT!</h1>
             <p id="final-score-text" style="font-size: 28px; margin: 20px 0; color: #4ade80;">SCORE: 0</p>
             <button id="retry-btn">RE-UP</button>
+            <p style="font-size: 10px; color: #444; margin-top: 15px;">AUTO-RESET IN 15S</p>
         </div>
     </div>
 
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let isMuted = false, score = 0, isStarted = false;
+let isMuted = false, score = 0, isStarted = false, lastInputTime = Date.now();
 let playerName = localStorage.getItem('hoppyNugName') || "";
 let highScore = parseInt(localStorage.getItem('hoppyNugBest')) || 0;
+let sessionRecord = parseInt(localStorage.getItem('hoppyNugSessionBest')) || 0;
+
+// Update Session Display
+document.getElementById('session-record').innerText = `TENT RECORD: ${sessionRecord}`;
 
 document.getElementById('mute-btn').onclick = function() {
     isMuted = !isMuted;
@@ -79,10 +94,10 @@ function create() {
     starGroup = this.add.group();
     this.time.addEvent({ delay: 450, callback: () => { let star = this.add.image(420, Phaser.Math.Between(0, 600), 'pixel_star'); star.setAlpha(Phaser.Math.FloatBetween(0.1, 0.3)); starGroup.add(star); }, loop: true });
     
-    // NUG SMOKE (Original horizontal drift)
+    // Nug Smoke (Drifting back)
     nugSmoke = this.add.particles(0, 0, 'smoke_puff', { scale: { start: 0.3, end: 1.2 }, alpha: { start: 0.3, end: 0 }, lifespan: 700, speedX: { min: -100, max: -150 }, frequency: -1 }).setDepth(5);
     
-    // BONG SMOKE (Lazy, wide, billowing clouds)
+    // Bong Smoke (Lazy, wide, billowing clouds)
     bongSmokeUp = this.add.particles(0, 0, 'smoke_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: -40, max: -80 }, speedX: { min: -50, max: 50 }, frequency: -1 }).setDepth(4);
     bongSmokeDown = this.add.particles(0, 0, 'smoke_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: 40, max: 80 }, speedX: { min: -50, max: 50 }, frequency: -1 }).setDepth(4);
     
@@ -94,7 +109,15 @@ function create() {
     
     bongs = this.physics.add.group(); lighters = this.physics.add.group(); flames = this.add.group();
     
-    this.input.on('pointerdown', () => { if (!isStarted) return; player.setVelocityY(-410); playSfx('jump'); player.setTexture('nug_active'); this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); triggerGlitch(); });
+    this.input.on('pointerdown', () => { 
+        lastInputTime = Date.now(); // Record activity time
+        if (!isStarted) return; 
+        player.setVelocityY(-410); playSfx('jump'); 
+        player.setTexture('nug_active'); 
+        this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
+        triggerGlitch(); 
+    });
+
     this.physics.add.overlap(player, bongs, gameOver, null, this);
     this.physics.add.overlap(player, lighters, gameOver, null, this);
     
@@ -110,25 +133,31 @@ function drawScoreBox(xOffset = 0, yOffset = 0) {
 function triggerGlitch() { if (!isStarted) return; scoreText.setX(20 + Phaser.Math.Between(-4, 4)); }
 
 function update() {
+    // 60-Second Inactivity Auto-Reload
+    if (Date.now() - lastInputTime > 60000) window.location.reload();
+
     starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
+    
     scoreText.setX(Phaser.Math.Linear(scoreText.x, 30, 0.15));
     drawScoreBox(scoreText.x - 30, scoreText.y - 30);
     
-    // Nug Smoke (Original style)
     if (this.time.now % 60 < 20) nugSmoke.emitParticleAt(player.x - 25, player.y + 5);
     if (player.y > 600 || player.y < 0) gameOver.call(this);
     
     bongs.getChildren().forEach(bong => {
-        // Slow Billowing Bong Smoke
         if (bong.x > 0 && bong.x < 420 && this.time.now % 120 < 20) {
-            if (bong.flipY) {
-                bongSmokeDown.emitParticleAt(bong.x, bong.y + 10);
-            } else {
-                bongSmokeUp.emitParticleAt(bong.x, bong.y - 10);
-            }
+            if (bong.flipY) bongSmokeDown.emitParticleAt(bong.x, bong.y + 10);
+            else bongSmokeUp.emitParticleAt(bong.x, bong.y - 10);
         }
-        if (bong.x < player.x && !bong.scored) { score += 0.5; if(Math.floor(score) > Math.floor(score - 0.5)) { scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); playSfx('point'); } bong.scored = true; }
+        if (bong.x < player.x && !bong.scored) { 
+            score += 0.5; 
+            if(Math.floor(score) > Math.floor(score - 0.5)) { 
+                scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); 
+                playSfx('point'); 
+            } 
+            bong.scored = true; 
+        }
         if (bong.x < -100) bong.destroy();
     });
 
@@ -167,6 +196,7 @@ function spawnBongs() {
 }
 
 function startGame() { 
+    lastInputTime = Date.now();
     playerName = nameInput.value || "PILOT"; 
     localStorage.setItem('hoppyNugName', playerName);
     scoreText.setText(`${playerName.toUpperCase()}: 0`); 
@@ -181,9 +211,24 @@ function gameOver() {
     isStarted = false; playSfx('crash'); this.physics.pause(); 
     player.setTint(0xff3333); player.setTexture('nug'); 
     let final = Math.floor(score);
+    
+    // Personal Best
     if (final > highScore) localStorage.setItem('hoppyNugBest', final);
+    
+    // Session (Tent) Best
+    if (final > sessionRecord) {
+        sessionRecord = final;
+        localStorage.setItem('hoppyNugSessionBest', final);
+        document.getElementById('session-record').innerText = `TENT RECORD: ${final}`;
+    }
+
     document.getElementById('game-over').style.display = 'block'; 
     document.getElementById('final-score-text').innerText = "SCORE: " + final; 
+
+    // Auto-refresh to Start Menu after 15 seconds
+    this.time.delayedCall(15000, () => {
+        if (!isStarted) window.location.reload();
+    });
 }
 </script>
 </body>
