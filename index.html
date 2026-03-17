@@ -69,6 +69,16 @@ let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
 let bgMusic;
 
+// PRE-GAME MUTE LOGIC
+document.getElementById('mute-btn').onclick = function() {
+    isMuted = !isMuted;
+    this.innerText = isMuted ? "🔇" : "🔊";
+    if (bgMusic) {
+        if (isMuted) bgMusic.pause();
+        else if (isStarted) bgMusic.resume();
+    }
+};
+
 function showOnly(id) {
     document.getElementById('start-menu').style.display = 'none';
     document.getElementById('leaderboard-screen').style.display = 'none';
@@ -84,7 +94,6 @@ function updateUI() {
 }
 updateUI();
 
-// REPAIRED IDLE TIMER
 function resetIdleTimer() {
     if (isStarted || document.getElementById('game-over').style.display === 'block') return;
     clearTimeout(idleTimer);
@@ -93,7 +102,7 @@ function resetIdleTimer() {
         if (!isStarted && document.getElementById('game-over').style.display !== 'block') {
             showOnly('leaderboard-screen');
         }
-    }, 10000); // 10 seconds of no touch
+    }, 10000);
 }
 
 window.addEventListener('mousedown', resetIdleTimer);
@@ -153,6 +162,8 @@ function create() {
     scoreText = this.add.text(30, 30, '', { fontSize: '18px', fill: '#4ade80', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
     
     bongs = this.physics.add.group(); lighters = this.physics.add.group(); flames = this.add.group();
+    
+    // Initialize Music early
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
 
     this.input.on('pointerdown', () => { 
@@ -213,7 +224,10 @@ function startGame() {
     localStorage.setItem('hoppyNugName', playerName);
     scoreText.setText(`${playerName.toUpperCase()}: 0`); 
     isStarted = true; player.body.allowGravity = true; 
-    if (!isMuted && bgMusic) bgMusic.play();
+    
+    // Play music only if NOT muted
+    if (bgMusic && !isMuted) bgMusic.play();
+    
     this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); 
     this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); 
 }
