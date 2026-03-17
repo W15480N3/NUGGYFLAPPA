@@ -10,11 +10,18 @@
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1000; }
-        .menu { pointer-events: auto; background: rgba(0, 15, 5, 0.95); border: 3px solid #4ade80; border-radius: 20px; padding: 40px; color: white; text-align: center; box-shadow: 0 0 30px rgba(74, 222, 128, 0.4); text-transform: uppercase; z-index: 1001; width: 320px; }
+        
+        .menu { 
+            pointer-events: auto; background: rgba(0, 15, 5, 0.95); 
+            border: 3px solid #4ade80; border-radius: 20px; padding: 40px; 
+            color: white; text-align: center; box-shadow: 0 0 30px rgba(74, 222, 128, 0.4); 
+            text-transform: uppercase; z-index: 1001; width: 320px; display: none;
+        }
+        
         input#player-name { background: #000; border: 2px solid #4ade80; color: #4ade80; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
         button { background: #4ade80; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; }
         
-        #leaderboard-screen { display: none; background: rgba(0,0,0,0.9); border: 4px solid #ff3333; }
+        #leaderboard-screen { border: 4px solid #ff3333; }
         .glow-text { color: #4ade80; text-shadow: 0 0 20px #4ade80; }
         .gold { color: #ffd700; text-shadow: 0 0 20px #ffd700; font-size: 32px; }
 
@@ -28,7 +35,7 @@
     <div id="ui-layer">
         <div id="session-record">TENT RECORD: 0</div>
         
-        <div id="start-menu" class="menu">
+        <div id="start-menu" class="menu" style="display: block;">
             <h1 class="glow-text" style="margin:0; font-size: 40px; font-weight: 900;">HOPPYNUG</h1>
             <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
             <p id="best-display" style="color: #666; margin: 10px 0; font-size: 14px;">PERSONAL BEST: 0</p>
@@ -44,7 +51,7 @@
             <p style="font-size: 10px; color: #4ade80; margin-top: 20px; animation: pulse 1s infinite;">TAP TO CHALLENGE</p>
         </div>
 
-        <div id="game-over" class="menu" style="display: none;">
+        <div id="game-over" class="menu">
             <h1 style="color: #ff3333; margin:0; font-size: 36px;">CASHED OUT!</h1>
             <p id="final-score-text" style="font-size: 28px; margin: 20px 0; color: #4ade80;">SCORE: 0</p>
             <button id="retry-btn">RE-UP</button>
@@ -53,7 +60,7 @@
 
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let isMuted = false, score = 0, isStarted = false, lastInputTime = Date.now(), idleTimer;
+let isMuted = false, score = 0, isStarted = false, lastInputTime = Date.now(), idleToggleTimer;
 let playerName = localStorage.getItem('hoppyNugName') || "";
 let highScore = parseInt(localStorage.getItem('hoppyNugBest')) || 0;
 let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
@@ -87,20 +94,27 @@ function playSfx(type) {
     }
 }
 
-function resetIdleTimer() {
-    clearTimeout(idleTimer);
-    if (!isStarted) {
-        document.getElementById('leaderboard-screen').style.display = 'none';
-        document.getElementById('start-menu').style.display = 'block';
-        idleTimer = setTimeout(() => { if(!isStarted) showLeaderboard(); }, 10000);
-    }
+// Automatic Screen Switching (Attract Mode)
+function startAttractMode() {
+    clearInterval(idleToggleTimer);
+    idleToggleTimer = setInterval(() => {
+        if (!isStarted && document.getElementById('game-over').style.display !== 'block') {
+            const isStartOpen = document.getElementById('start-menu').style.display === 'block';
+            document.getElementById('start-menu').style.display = isStartOpen ? 'none' : 'block';
+            document.getElementById('leaderboard-screen').style.display = isStartOpen ? 'block' : 'none';
+        }
+    }, 6000); // Switches every 6 seconds
 }
-function showLeaderboard() {
-    document.getElementById('start-menu').style.display = 'none';
-    document.getElementById('leaderboard-screen').style.display = 'block';
+
+function stopAttractMode() {
+    clearInterval(idleToggleTimer);
+    document.getElementById('leaderboard-screen').style.display = 'none';
+    document.getElementById('start-menu').style.display = 'block';
 }
-window.addEventListener('mousedown', resetIdleTimer);
-window.addEventListener('touchstart', resetIdleTimer);
+
+// Global Touch Listeners to bring back Start Menu
+window.addEventListener('mousedown', () => { if(!isStarted) stopAttractMode(); });
+window.addEventListener('touchstart', () => { if(!isStarted) stopAttractMode(); });
 
 const config = { 
     type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000', 
@@ -120,7 +134,6 @@ function preload() {
 }
 
 function create() {
-    // BACKGROUND STARS Restoration
     starGroup = this.add.group();
     this.time.addEvent({ delay: 450, callback: () => { 
         let star = this.add.image(420, Phaser.Math.Between(0, 600), 'pixel_star'); 
@@ -134,7 +147,6 @@ function create() {
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(45, 290, 95); player.body.allowGravity = false;
 
-    // UI BOX Restoration
     scoreBox = this.add.graphics().setDepth(99);
     scoreText = this.add.text(30, 30, '', { fontSize: '18px', fill: '#4ade80', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
     
@@ -146,15 +158,16 @@ function create() {
         player.setVelocityY(-410); playSfx('jump');
         player.setTexture('nug_active'); 
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
-        // Glitch Trigger
-        scoreText.setX(20 + Phaser.Math.Between(-4, 4));
+        scoreText.setX(20 + Phaser.Math.Between(-4, 4)); // GLITCH
     });
 
     this.physics.add.overlap(player, bongs, gameOver, null, this);
     this.physics.add.overlap(player, lighters, gameOver, null, this);
     
-    document.getElementById('start-btn').onclick = () => startGame.call(this);
+    document.getElementById('start-btn').onclick = (e) => { e.stopPropagation(); startGame.call(this); };
     document.getElementById('retry-btn').onclick = () => window.location.reload();
+    
+    startAttractMode();
 }
 
 function drawScoreBox(xOffset = 0, yOffset = 0) {
@@ -163,17 +176,13 @@ function drawScoreBox(xOffset = 0, yOffset = 0) {
 }
 
 function update() {
-    // Star Drift
     starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
-
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
     
-    // UI Glitch Restoration
     scoreText.setX(Phaser.Math.Linear(scoreText.x, 30, 0.15));
     drawScoreBox(scoreText.x - 30, scoreText.y - 30);
 
     if (player.y > 600 || player.y < 0) gameOver.call(this);
-    
     if (this.time.now % 60 < 20) nugSmoke.emitParticleAt(player.x - 25, player.y + 5);
 
     bongs.getChildren().forEach(bong => {
@@ -197,12 +206,17 @@ function update() {
 }
 
 function startGame() { 
-    clearTimeout(idleTimer);
+    stopAttractMode();
     playerName = document.getElementById('player-name').value || "PILOT"; 
     localStorage.setItem('hoppyNugName', playerName);
     scoreText.setText(`${playerName.toUpperCase()}: 0`); 
     isStarted = true; player.body.allowGravity = true; 
+    
+    // Explicitly Hide Menus
     document.getElementById('start-menu').style.display = 'none'; 
+    document.getElementById('leaderboard-screen').style.display = 'none';
+    document.getElementById('game-over').style.display = 'none';
+
     if (!isMuted && bgMusic) bgMusic.play();
     this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); 
     this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); 
@@ -235,8 +249,13 @@ function gameOver() {
         champScore = final; champName = playerName;
     }
     updateUI();
+    
+    // ONLY show Game Over
+    document.getElementById('start-menu').style.display = 'none';
+    document.getElementById('leaderboard-screen').style.display = 'none';
     document.getElementById('game-over').style.display = 'block'; 
     document.getElementById('final-score-text').innerText = "SCORE: " + final; 
+    
     setTimeout(() => { if (!isStarted) window.location.reload(); }, 15000);
 }
 </script>
