@@ -12,26 +12,24 @@
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1000; }
         
         .menu { 
-            pointer-events: auto; background: rgba(0, 15, 5, 0.98); 
+            pointer-events: auto; background: rgba(0, 10, 5, 0.98); 
             border: 3px solid #4ade80; border-radius: 20px; padding: 40px; 
-            color: white; text-align: center; box-shadow: 0 0 40px rgba(0,0,0,1); 
-            text-transform: uppercase; width: 320px; display: none;
-            position: absolute; /* Lock them in the same spot */
+            color: white; text-align: center; box-shadow: 0 0 50px #000; 
+            text-transform: uppercase; width: 300px; display: none;
+            position: absolute;
         }
         
-        /* Ensure Game Over is the absolute top layer */
-        #game-over { z-index: 2005; border-color: #ff3333; }
-        #start-menu { z-index: 2001; }
-        #leaderboard-screen { z-index: 2002; border-color: #ff3333; }
+        #game-over { z-index: 3000; border-color: #ff3333; }
+        #leaderboard-screen { z-index: 2500; border-color: #ff3333; }
+        #start-menu { z-index: 2000; }
 
         input#player-name { background: #000; border: 2px solid #4ade80; color: #4ade80; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
         button { background: #4ade80; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; }
         
         .glow-text { color: #4ade80; text-shadow: 0 0 20px #4ade80; }
         .gold { color: #ffd700; text-shadow: 0 0 20px #ffd700; font-size: 32px; }
-        #session-record { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #ff3333; font-weight: 900; z-index: 101; font-size: 22px; text-shadow: 0 0 15px #ff3333; pointer-events: none; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; scale: 1.05; } 100% { opacity: 0.7; } }
-        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #4ade80; font-size: 24px; cursor: pointer; z-index: 3000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #4ade80; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+        #session-record { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #ff3333; font-weight: 900; z-index: 101; font-size: 22px; text-shadow: 0 0 15px #ff3333; pointer-events: none; }
+        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #4ade80; font-size: 24px; cursor: pointer; z-index: 4000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #4ade80; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -52,7 +50,7 @@
             <p style="font-size: 14px; color: #888;">CURRENT REIGNING CHAMP:</p>
             <h1 id="champ-name" class="gold">NONE</h1>
             <h2 id="champ-score" class="glow-text" style="font-size: 40px;">0</h2>
-            <p style="font-size: 10px; color: #4ade80; margin-top: 20px; animation: pulse 1s infinite;">TAP TO CHALLENGE</p>
+            <p style="font-size: 10px; color: #4ade80; margin-top: 20px;">TAP TO CHALLENGE</p>
         </div>
 
         <div id="game-over" class="menu">
@@ -64,14 +62,13 @@
 
 <script>
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let isMuted = false, score = 0, isStarted = false, lastInputTime = Date.now(), idleToggleTimer;
+let isMuted = false, score = 0, isStarted = false, idleTimer;
 let playerName = localStorage.getItem('hoppyNugName') || "";
 let highScore = parseInt(localStorage.getItem('hoppyNugBest')) || 0;
 let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
 let bgMusic;
 
-// NEW: Forcefully hides everything before showing one thing
 function showOnly(id) {
     document.getElementById('start-menu').style.display = 'none';
     document.getElementById('leaderboard-screen').style.display = 'none';
@@ -86,6 +83,21 @@ function updateUI() {
     document.getElementById('best-display').innerText = "PERSONAL BEST: " + highScore;
 }
 updateUI();
+
+// REPAIRED IDLE TIMER
+function resetIdleTimer() {
+    if (isStarted || document.getElementById('game-over').style.display === 'block') return;
+    clearTimeout(idleTimer);
+    showOnly('start-menu');
+    idleTimer = setTimeout(() => {
+        if (!isStarted && document.getElementById('game-over').style.display !== 'block') {
+            showOnly('leaderboard-screen');
+        }
+    }, 10000); // 10 seconds of no touch
+}
+
+window.addEventListener('mousedown', resetIdleTimer);
+window.addEventListener('touchstart', resetIdleTimer);
 
 function playSfx(type) {
     if (isMuted) return;
@@ -105,24 +117,6 @@ function playSfx(type) {
         osc.start(); osc.stop(now + 0.4); 
     }
 }
-
-function startAttractMode() {
-    clearInterval(idleToggleTimer);
-    idleToggleTimer = setInterval(() => {
-        if (!isStarted && document.getElementById('game-over').style.display !== 'block') {
-            const isStartOpen = document.getElementById('start-menu').style.display === 'block';
-            showOnly(isStartOpen ? 'leaderboard-screen' : 'start-menu');
-        }
-    }, 6000);
-}
-
-function stopAttractMode() {
-    clearInterval(idleToggleTimer);
-    if (!isStarted) showOnly('start-menu');
-}
-
-window.addEventListener('mousedown', () => { if(!isStarted && document.getElementById('game-over').style.display !== 'block') stopAttractMode(); });
-window.addEventListener('touchstart', () => { if(!isStarted && document.getElementById('game-over').style.display !== 'block') stopAttractMode(); });
 
 const config = { 
     type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000', 
@@ -175,7 +169,7 @@ function create() {
     document.getElementById('start-btn').onclick = (e) => { e.stopPropagation(); startGame.call(this); };
     document.getElementById('retry-btn').onclick = (e) => { e.stopPropagation(); window.location.reload(); };
     
-    startAttractMode();
+    resetIdleTimer();
 }
 
 function drawScoreBox(xOffset = 0, yOffset = 0) {
@@ -213,12 +207,12 @@ function update() {
 }
 
 function startGame() { 
-    showOnly(null); // Hide ALL menus
+    clearTimeout(idleTimer);
+    showOnly(null); 
     playerName = document.getElementById('player-name').value || "PILOT"; 
     localStorage.setItem('hoppyNugName', playerName);
     scoreText.setText(`${playerName.toUpperCase()}: 0`); 
     isStarted = true; player.body.allowGravity = true; 
-    
     if (!isMuted && bgMusic) bgMusic.play();
     this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); 
     this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); 
@@ -251,10 +245,8 @@ function gameOver() {
         champScore = final; champName = playerName;
     }
     updateUI();
-    
     showOnly('game-over'); 
     document.getElementById('final-score-text').innerText = "SCORE: " + final; 
-    setTimeout(() => { if (!isStarted) window.location.reload(); }, 15000);
 }
 </script>
 </body>
