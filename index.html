@@ -9,7 +9,7 @@
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
-        #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1000; }
+        #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 3000; }
         
         @keyframes goldPulse {
             0% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); border-color: #ffcc00; }
@@ -18,15 +18,17 @@
         }
 
         .menu { 
-            pointer-events: auto; background: rgba(10, 5, 0, 0.95); 
+            pointer-events: auto; 
+            /* FIXED: Lowered opacity to 0.7 to see the glitch behind it */
+            background: rgba(10, 5, 0, 0.7); 
             border: 3px solid #ffcc00; border-radius: 20px; padding: 40px; 
             color: white; text-align: center; text-transform: uppercase; width: 300px; display: none;
             position: absolute; animation: goldPulse 3s infinite ease-in-out;
         }
         
-        #game-over { z-index: 3000; animation: none; border-color: #ffffff; box-shadow: 0 0 50px #000; }
-        #leaderboard-screen { z-index: 2500; }
-        #start-menu { z-index: 2000; }
+        #game-over { z-index: 4000; animation: none; border-color: #ffffff; box-shadow: 0 0 50px #000; }
+        #leaderboard-screen { z-index: 3500; }
+        #start-menu { z-index: 3000; }
 
         input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
         button { background: #ffcc00; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; transition: 0.2s; }
@@ -35,21 +37,19 @@
         .glow-text { color: #ffcc00; text-shadow: 0 0 20px #ffcc00; }
         .gold { color: #ffffff; text-shadow: 0 0 20px #ffcc00; font-size: 32px; }
         #session-record { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 101; font-size: 22px; text-shadow: 0 0 15px rgba(255,204,0,0.5); pointer-events: none; }
-        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #ffcc00; font-size: 24px; cursor: pointer; z-index: 4000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #ffcc00; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #ffcc00; font-size: 24px; cursor: pointer; z-index: 5000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #ffcc00; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
     <div id="mute-btn">🔊</div>
     <div id="ui-layer">
         <div id="session-record">TENT RECORD: 0</div>
-        
         <div id="start-menu" class="menu" style="display: block;">
             <h1 class="glow-text" style="margin:0; font-size: 40px; font-weight: 900;">HOPPYNUG</h1>
             <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
             <p id="best-display" style="color: #888; margin: 10px 0; font-size: 14px;">PERSONAL BEST: 0</p>
             <button id="start-btn">LIGHT UP</button>
         </div>
-
         <div id="leaderboard-screen" class="menu">
             <h2 style="color: #ffffff; margin:0;">CHAMPION STASH</h2>
             <hr style="border: 1px solid #444; margin: 20px 0;">
@@ -58,7 +58,6 @@
             <h2 id="champ-score" class="glow-text" style="font-size: 40px;">0</h2>
             <p style="font-size: 10px; color: #ffcc00; margin-top: 20px;">TAP TO CHALLENGE</p>
         </div>
-
         <div id="game-over" class="menu">
             <h1 style="color: #ffffff; margin:0; font-size: 36px;">CASHED OUT!</h1>
             <p id="final-score-text" style="font-size: 28px; margin: 20px 0; color: #ffcc00;">SCORE: 0</p>
@@ -86,7 +85,11 @@ function showOnly(id) {
     document.getElementById('leaderboard-screen').style.display = 'none';
     document.getElementById('game-over').style.display = 'none';
     if(id) document.getElementById(id).style.display = 'block';
-    if (glitchLayer) glitchLayer.setVisible(id === 'leaderboard-screen');
+    
+    // Switch glitch visibility
+    if (glitchLayer) {
+        glitchLayer.setVisible(id === 'leaderboard-screen');
+    }
 }
 
 function updateUI() {
@@ -155,10 +158,11 @@ function preload() {
 }
 
 function create() {
+    // FIXED: Higher Depth (2000) so it's visible but behind UI (3000)
     glitchLayer = this.add.group();
     for(let i=0; i<5; i++) {
         for(let j=0; j<7; j++) {
-            let logo = this.add.image(i * 100, j * 100, 'summa_logo').setScale(0.1).setAlpha(0).setDepth(0);
+            let logo = this.add.image(i * 100, j * 100, 'summa_logo').setScale(0.12).setAlpha(0).setDepth(2000);
             glitchLayer.add(logo);
         }
     }
@@ -206,14 +210,15 @@ function create() {
 function update() {
     starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if (s.x < -20) s.destroy(); });
 
+    // FIXED: Stronger glitch visibility
     if (glitchLayer && glitchLayer.visible) {
         glitchLayer.getChildren().forEach(logo => {
-            if (Math.random() > 0.88) {
-                logo.setAlpha(Phaser.Math.FloatBetween(0.1, 0.35));
-                logo.setX(logo.x + Phaser.Math.Between(-10, 10));
+            if (Math.random() > 0.85) {
+                logo.setAlpha(Phaser.Math.FloatBetween(0.15, 0.45));
+                logo.setX(logo.x + Phaser.Math.Between(-15, 15));
                 logo.setTint(Math.random() > 0.5 ? 0xff0000 : 0x00ffff);
             } else {
-                logo.setAlpha(0.12);
+                logo.setAlpha(0.15);
                 logo.clearTint();
             }
         });
