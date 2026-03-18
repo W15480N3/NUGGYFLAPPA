@@ -32,14 +32,12 @@
     <div id="mute-btn">🔊</div>
     <div id="ui-layer">
         <div id="session-record">TENT RECORD: 0</div>
-        
         <div id="start-menu" class="menu" style="display: block;">
             <h1 class="glow-text" style="margin:0; font-size: 40px;">HOPPYNUG</h1>
             <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
             <p id="best-display" style="color: #888; font-size: 14px;">PERSONAL BEST: 0</p>
             <button id="start-btn">LIGHT UP</button>
         </div>
-
         <div id="leaderboard-screen" class="menu">
             <h2 style="color: #ffffff; margin:0;">CHAMPION STASH</h2>
             <hr style="border: 1px solid #444; margin: 20px 0;">
@@ -47,7 +45,6 @@
             <h2 id="champ-score" class="glow-text" style="font-size: 45px;">0</h2>
             <p style="font-size: 12px; color: #ffcc00;">TAP ANYWHERE TO CHALLENGE</p>
         </div>
-
         <div id="game-over" class="menu">
             <h1 style="color: #ffffff; margin:0;">CASHED OUT!</h1>
             <p id="final-score-text" style="font-size: 28px; color: #ffcc00;">SCORE: 0</p>
@@ -61,7 +58,7 @@ let playerName = localStorage.getItem('hoppyNugName') || "";
 let highScore = parseInt(localStorage.getItem('hoppyNugBest')) || 0;
 let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
-let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, starGroup, starGroupFar, scoreText, shieldStatusText, footerLogo;
+let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, starGroupFar, scoreText, shieldStatusText, footerLogo;
 
 const config = { 
     type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000', 
@@ -99,22 +96,11 @@ function create() {
 
     footerLogo = this.add.image(380, 580, 'summa_logo').setScale(0.12).setAlpha(0.5).setDepth(1).setOrigin(1,1);
 
-    vaporTrail = this.add.particles(0, 0, 'vapor_puff', {
-        scale: { start: 0.4, end: 1.5 },
-        alpha: { start: 0.6, end: 0 },
-        lifespan: 1000,
-        speedX: { min: -150, max: -200 },
-        frequency: 50,
-        emitting: false
-    }).setDepth(5);
-
-    terpSparkle = this.add.particles(0, 0, 'terp_bit', {
-        scale: { start: 1.2, end: 0 },
-        alpha: { start: 1, end: 0 },
-        lifespan: 800,
-        speed: { min: 50, max: 150 },
-        emitting: false
-    }).setDepth(15);
+    // SMOKE SYSTEM
+    vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.4, end: 1.5 }, alpha: { start: 0.6, end: 0 }, lifespan: 1000, speedX: { min: -150, max: -200 }, emitting: false }).setDepth(5);
+    vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: -50, max: -100 }, frequency: -1 }).setDepth(4);
+    vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: 50, max: 100 }, frequency: -1 }).setDepth(4);
+    terpSparkle = this.add.particles(0, 0, 'terp_bit', { scale: { start: 1.2, end: 0 }, alpha: { start: 1, end: 0 }, lifespan: 800, speed: { min: 50, max: 150 }, emitting: false }).setDepth(15);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(45, 290, 95); 
@@ -145,16 +131,7 @@ function create() {
         } 
         player.setVelocityY(-410); playSfx('jump');
         player.setTexture('nug_active'); 
-        
-        this.tweens.add({
-            targets: scoreText,
-            x: 30 + (Math.random() * 6 - 3),
-            y: 30 + (Math.random() * 6 - 3),
-            duration: 50,
-            yoyo: true,
-            onComplete: () => { scoreText.setPosition(30, 30); }
-        });
-
+        this.tweens.add({ targets: scoreText, x: 30 + (Math.random() * 6 - 3), y: 30 + (Math.random() * 6 - 3), duration: 50, yoyo: true, onComplete: () => { scoreText.setPosition(30, 30); } });
         terpSparkle.emitParticleAt(player.x - 10, player.y, 5); 
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
@@ -176,14 +153,10 @@ function create() {
 
 function startIdleCycle() {
     idleTimer = setInterval(() => {
-        // FIX: Check if the player is currently typing in the name box
         const nameInput = document.getElementById('player-name');
-        const isTyping = document.activeElement === nameInput;
-
-        if (!isStarted && !isTyping) {
+        if (!isStarted && document.activeElement !== nameInput) {
             const startMenu = document.getElementById('start-menu');
-            if (startMenu.style.display === 'block') showMenu('leaderboard-screen');
-            else showMenu('start-menu');
+            showMenu(startMenu.style.display === 'block' ? 'leaderboard-screen' : 'start-menu');
         }
     }, 5000);
 }
@@ -205,6 +178,11 @@ function update() {
     vaporTrail.emitParticleAt(player.x - 25, player.y + 5);
 
     bongs.getChildren().forEach(bong => {
+        // RESTORED BONG SMOKE EMISSION
+        if (bong.x > 0 && bong.x < 420 && this.time.now % 100 < 30) {
+            if (bong.flipY) vaporDown.emitParticleAt(bong.x, bong.y + 15); 
+            else vaporUp.emitParticleAt(bong.x, bong.y - 15);
+        }
         if (bong.x < player.x && !bong.scored) { 
             score += 0.5; 
             if(Math.floor(score) > Math.floor(score - 0.5)) {
@@ -215,14 +193,12 @@ function update() {
         }
     });
 
-    shieldLogos.getChildren().forEach(logo => {
-        logo.y = logo.startY + Math.sin(this.time.now / 400) * 30;
-    });
-
     lighters.getChildren().forEach((l, i) => { 
         let f = flames.getChildren()[i]; l.angle += 3.5; l.y = l.startY + Math.sin(this.time.now / 300) * 40; 
         if (f) { let rad = Phaser.Math.DegToRad(l.angle + 180); f.x = l.x + Math.cos(rad) * 45; f.y = l.y + Math.sin(rad) * 45; f.angle = l.angle; }
     });
+
+    shieldLogos.getChildren().forEach(logo => { logo.y = logo.startY + Math.sin(this.time.now / 400) * 30; });
 
     if (hasShield) { player.setTint(0xffcc00); shieldStatusText.setText("🛡️ SUMMA SHIELD ACTIVE"); }
     else { player.clearTint(); shieldStatusText.setText(""); }
@@ -234,8 +210,7 @@ function spawnLevel() {
     const bot = bongs.create(550, y + 140, 'bong').setOrigin(0.5, 0);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
-    top.body.setSize(80, 380).setOffset(320, 0); 
-    bot.body.setSize(80, 380).setOffset(320, 0);
+    top.body.setSize(80, 380).setOffset(320, 0); bot.body.setSize(80, 380).setOffset(320, 0);
 
     if (Math.random() > 0.5) {
         let ly = Phaser.Math.Between(100, 500);
@@ -244,36 +219,25 @@ function spawnLevel() {
         l.body.setCircle(180).setOffset(90, 90); 
         flames.create(l.x - 45, ly, 'flame').setScale(0.08);
     }
-
     if (Math.random() > 0.7) {
         let sy = Phaser.Math.Between(100, 500);
-        let pwr = shieldLogos.create(750, sy, 'summa_logo').setScale(0.12).setDepth(20);
-        pwr.body.allowGravity = false; pwr.setVelocityX(-210);
-        pwr.startY = sy;
+        let pwr = shieldLogos.create(750, sy, 'summa_logo').setScale(0.12);
+        pwr.body.allowGravity = false; pwr.setVelocityX(-210); pwr.startY = sy;
         pwr.body.setCircle(200).setOffset(60, 60); 
     }
 }
 
 function handleCollision(player, obstacle) {
-    if (hasShield) {
-        hasShield = false; obstacle.destroy();
-        this.cameras.main.shake(300, 0.02); playSfx('crash');
-    } else { gameOver.call(this); }
+    if (hasShield) { hasShield = false; obstacle.destroy(); this.cameras.main.shake(300, 0.02); playSfx('crash'); } 
+    else { gameOver.call(this); }
 }
 
 function gameOver() { 
-    if (!isStarted) return; isStarted = false; playSfx('crash'); this.physics.pause(); 
-    vaporTrail.stop(); 
+    if (!isStarted) return; isStarted = false; playSfx('crash'); this.physics.pause(); vaporTrail.stop(); 
     let final = Math.floor(score);
     if (final > highScore) localStorage.setItem('hoppyNugBest', final);
-    if (final > champScore) {
-        localStorage.setItem('hoppyNugChampScore', final);
-        localStorage.setItem('hoppyNugChampName', playerName);
-        champScore = final; champName = playerName;
-    }
-    updateUI();
-    showMenu('game-over');
-    document.getElementById('final-score-text').innerText = "SCORE: " + final; 
+    if (final > champScore) { localStorage.setItem('hoppyNugChampScore', final); localStorage.setItem('hoppyNugChampName', playerName); champScore = final; champName = playerName; }
+    updateUI(); showMenu('game-over'); document.getElementById('final-score-text').innerText = "SCORE: " + final; 
 }
 
 function playSfx(type) {
@@ -296,8 +260,7 @@ function updateUI() {
 }
 
 document.getElementById('mute-btn').onclick = function() {
-    isMuted = !isMuted;
-    this.innerText = isMuted ? "🔇" : "🔊";
+    isMuted = !isMuted; this.innerText = isMuted ? "🔇" : "🔊";
     if (bgMusic) { if (isMuted) bgMusic.pause(); else if (isStarted) bgMusic.resume(); }
 };
 </script>
