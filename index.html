@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>HoppyNug - SUMMA LUXE</title>
+    <title>HoppyNug - SUMMA LUXE DEBUG</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -58,11 +58,17 @@ let playerName = localStorage.getItem('hoppyNugName') || "";
 let highScore = parseInt(localStorage.getItem('hoppyNugBest')) || 0;
 let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
-let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, starGroupFar, scoreText, shieldStatusText, footerLogo;
+let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, scoreText, shieldStatusText, footerLogo;
 
 const config = { 
     type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000', 
-    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: true } },
+    physics: { 
+        default: 'arcade', 
+        arcade: { 
+            gravity: { y: 1200 }, 
+            debug: true // DEBUG IS ON
+        } 
+    },
     scene: { preload, create, update } 
 };
 const game = new Phaser.Game(config);
@@ -84,7 +90,7 @@ function preload() {
 function create() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    starGroupFar = this.add.group(); starGroup = this.add.group();
+    let starGroupFar = this.add.group(); let starGroup = this.add.group();
     this.time.addEvent({ delay: 200, callback: () => {
         let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.2).setScale(0.5);
         star.setData('speed', 1); starGroupFar.add(star);
@@ -96,7 +102,6 @@ function create() {
 
     footerLogo = this.add.image(380, 580, 'summa_logo').setScale(0.12).setAlpha(0.5).setDepth(1).setOrigin(1,1);
 
-    // SMOKE SYSTEM
     vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.4, end: 1.5 }, alpha: { start: 0.6, end: 0 }, lifespan: 1000, speedX: { min: -150, max: -200 }, emitting: false }).setDepth(5);
     vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: -50, max: -100 }, frequency: -1 }).setDepth(4);
     vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: 50, max: 100 }, frequency: -1 }).setDepth(4);
@@ -169,16 +174,12 @@ function showMenu(id) {
 }
 
 function update() {
-    starGroupFar.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -20) s.destroy(); });
-    starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -20) s.destroy(); });
-
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
     if (player.y > 600 || player.y < 0) gameOver.call(this);
 
     vaporTrail.emitParticleAt(player.x - 25, player.y + 5);
 
     bongs.getChildren().forEach(bong => {
-        // RESTORED BONG SMOKE EMISSION
         if (bong.x > 0 && bong.x < 420 && this.time.now % 100 < 30) {
             if (bong.flipY) vaporDown.emitParticleAt(bong.x, bong.y + 15); 
             else vaporUp.emitParticleAt(bong.x, bong.y - 15);
@@ -216,7 +217,8 @@ function spawnLevel() {
         let ly = Phaser.Math.Between(100, 500);
         let l = lighters.create(650, ly, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180); l.startY = ly;
-        l.body.setCircle(180).setOffset(90, 90); 
+        // TWICE THE SIZE (360) AND MOVED TO THE RIGHT (offset +180)
+        l.body.setCircle(360).setOffset(180, 90); 
         flames.create(l.x - 45, ly, 'flame').setScale(0.08);
     }
     if (Math.random() > 0.7) {
