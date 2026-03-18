@@ -237,24 +237,21 @@ function startGame() {
 
 function spawnLevel() {
     const y = Phaser.Math.Between(150, 450);
+    // Bongs - Default Hitboxes
     const top = bongs.create(550, y - 140, 'bong').setOrigin(0.5, 1).setFlipY(true);
     const bot = bongs.create(550, y + 140, 'bong').setOrigin(0.5, 0);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
-    
-    // RESTORED ORIGINAL HITBOXES FROM SCREENSHOTS
-    top.body.setSize(bong.width, bong.height);
-    bot.body.setSize(bong.width, bong.height);
 
+    // Lighter - Default Hitboxes
     if (Math.random() > 0.5) {
         let ly = Phaser.Math.Between(100, 500);
         let l = lighters.create(650, ly, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180); l.startY = ly;
-        // RESTORED ORIGINAL LIGHTER HITBOX
-        l.body.setSize(lighter.width, lighter.height);
         flames.create(l.x - 45, ly, 'flame').setScale(0.08);
     }
 
+    // Shield Logo
     if (Math.random() > 0.8) {
         let pwr = shieldLogos.create(750, Phaser.Math.Between(100, 500), 'summa_logo').setScale(0.12);
         pwr.body.allowGravity = false; pwr.setVelocityX(-210);
