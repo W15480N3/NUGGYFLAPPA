@@ -10,27 +10,22 @@
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 5000; }
-        
         @keyframes goldPulse {
             0% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); border-color: #ffcc00; }
             50% { box-shadow: 0 0 60px rgba(255, 204, 0, 0.8); border-color: #ffffff; }
             100% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); border-color: #ffcc00; }
         }
-
         .menu { 
             pointer-events: auto; background: rgba(10, 5, 0, 0.75); 
             border: 3px solid #ffcc00; border-radius: 20px; padding: 40px; 
             color: white; text-align: center; text-transform: uppercase; width: 300px; display: none;
             position: absolute; animation: goldPulse 3s infinite ease-in-out;
         }
-        
         #game-over { z-index: 6000; }
         #leaderboard-screen { z-index: 5500; }
         #start-menu { z-index: 5000; }
-
         input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
         button { background: #ffcc00; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; }
-        
         .glow-text { color: #ffcc00; text-shadow: 0 0 20px #ffcc00; }
         #session-record { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 101; font-size: 22px; pointer-events: none; }
         #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #ffcc00; font-size: 24px; cursor: pointer; z-index: 7000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #ffcc00; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
@@ -161,7 +156,9 @@ function create() {
     vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: 40, max: 80 }, frequency: -1 }).setDepth(4);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
-    player.body.setCircle(45, 290, 95); player.body.allowGravity = false;
+    // RE-RESTORED NUG HITBOX
+    player.body.setCircle(45, 290, 95); 
+    player.body.allowGravity = false;
 
     scoreText = this.add.text(30, 30, '', { fontSize: '18px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
     shieldStatusText = this.add.text(30, 60, '', { fontSize: '14px', fill: '#ffffff', fontFamily: 'Orbitron' }).setDepth(100);
@@ -237,24 +234,28 @@ function startGame() {
 
 function spawnLevel() {
     const y = Phaser.Math.Between(150, 450);
-    // Bongs - Default Hitboxes
     const top = bongs.create(550, y - 140, 'bong').setOrigin(0.5, 1).setFlipY(true);
     const bot = bongs.create(550, y + 140, 'bong').setOrigin(0.5, 0);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
+    
+    // RE-RESTORED EXACT BONG HITBOXES
+    top.body.setSize(80, 380).setOffset(320, 0); 
+    bot.body.setSize(80, 380).setOffset(320, 0);
 
-    // Lighter - Default Hitboxes
     if (Math.random() > 0.5) {
         let ly = Phaser.Math.Between(100, 500);
         let l = lighters.create(650, ly, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180); l.startY = ly;
+        // RE-RESTORED EXACT LIGHTER HITBOX
+        l.body.setCircle(180).setOffset(90, 90); 
         flames.create(l.x - 45, ly, 'flame').setScale(0.08);
     }
 
-    // Shield Logo
     if (Math.random() > 0.8) {
         let pwr = shieldLogos.create(750, Phaser.Math.Between(100, 500), 'summa_logo').setScale(0.12);
         pwr.body.allowGravity = false; pwr.setVelocityX(-210);
+        pwr.body.setCircle(150).setOffset(100, 100);
     }
 }
 
