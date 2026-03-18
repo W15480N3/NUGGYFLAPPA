@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>HoppyNug - SUMMA LUXE DEBUG</title>
+    <title>HoppyNug - SUMMA LUXE SPACE</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -58,17 +58,11 @@ let playerName = localStorage.getItem('hoppyNugName') || "";
 let highScore = parseInt(localStorage.getItem('hoppyNugBest')) || 0;
 let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
-let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, scoreText, shieldStatusText, footerLogo;
+let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, starGroupFar, scoreText, shieldStatusText, footerLogo;
 
 const config = { 
     type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000', 
-    physics: { 
-        default: 'arcade', 
-        arcade: { 
-            gravity: { y: 1200 }, 
-            debug: true // DEBUG IS ON
-        } 
-    },
+    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: true } },
     scene: { preload, create, update } 
 };
 const game = new Phaser.Game(config);
@@ -90,11 +84,15 @@ function preload() {
 function create() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    let starGroupFar = this.add.group(); let starGroup = this.add.group();
+    // RESTORED STAR GROUPS
+    starGroupFar = this.add.group(); 
+    starGroup = this.add.group();
+
     this.time.addEvent({ delay: 200, callback: () => {
         let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.2).setScale(0.5);
         star.setData('speed', 1); starGroupFar.add(star);
     }, loop: true });
+
     this.time.addEvent({ delay: 400, callback: () => {
         let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.6);
         star.setData('speed', 3); starGroup.add(star);
@@ -174,6 +172,10 @@ function showMenu(id) {
 }
 
 function update() {
+    // ANIMATE STARS
+    starGroupFar.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -20) s.destroy(); });
+    starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -20) s.destroy(); });
+
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
     if (player.y > 600 || player.y < 0) gameOver.call(this);
 
@@ -217,7 +219,6 @@ function spawnLevel() {
         let ly = Phaser.Math.Between(100, 500);
         let l = lighters.create(650, ly, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180); l.startY = ly;
-        // TWICE THE SIZE (360) AND MOVED TO THE RIGHT (offset +180)
         l.body.setCircle(360).setOffset(180, 90); 
         flames.create(l.x - 45, ly, 'flame').setScale(0.08);
     }
