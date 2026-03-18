@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>HoppyNug - SUMMA GLITCH</title>
+    <title>HoppyNug - SUMMA LUXE</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -25,7 +25,7 @@
         }
         
         #game-over { z-index: 3000; animation: none; border-color: #ffffff; box-shadow: 0 0 50px #000; }
-        #leaderboard-screen { z-index: 2500; } /* Glitch logic tied to this ID */
+        #leaderboard-screen { z-index: 2500; }
         #start-menu { z-index: 2000; }
 
         input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
@@ -86,8 +86,6 @@ function showOnly(id) {
     document.getElementById('leaderboard-screen').style.display = 'none';
     document.getElementById('game-over').style.display = 'none';
     if(id) document.getElementById(id).style.display = 'block';
-    
-    // Toggle Glitch Layer based on Leaderboard screen
     if (glitchLayer) glitchLayer.setVisible(id === 'leaderboard-screen');
 }
 
@@ -143,9 +141,12 @@ const game = new Phaser.Game(config);
 let player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, scoreText, scoreBox, summaLogo, glitchLayer;
 
 function preload() {
-    this.load.image('nug', 'nug.png'); this.load.image('nug_active', 'nug_active.png'); 
-    this.load.image('bong', 'bong.png'); this.load.image('lighter', 'lighter.png'); 
-    this.load.image('flame', 'flame.png'); this.load.audio('bgm', 'background_track.mp3');
+    this.load.image('nug', 'nug.png'); 
+    this.load.image('nug_active', 'nug_active.png'); 
+    this.load.image('bong', 'bong.png'); 
+    this.load.image('lighter', 'lighter.png'); 
+    this.load.image('flame', 'flame.png');
+    this.load.audio('bgm', 'background_track.mp3');
     this.load.image('summa_logo', 'summa.png'); 
     
     let g = this.make.graphics(); g.fillStyle(0xffffff, 1); g.fillCircle(8, 8, 8); g.generateTexture('vapor_puff', 16, 16);
@@ -154,17 +155,16 @@ function preload() {
 }
 
 function create() {
-    // 1. TILING GLITCH LAYER (Background for Leaderboard)
     glitchLayer = this.add.group();
-    for(let i=0; i<4; i++) {
-        for(let j=0; j<6; j++) {
-            let logo = this.add.image(i * 120 + 20, j * 120 + 20, 'summa_logo').setScale(0.08).setAlpha(0).setDepth(0);
+    for(let i=0; i<5; i++) {
+        for(let j=0; j<7; j++) {
+            let logo = this.add.image(i * 100, j * 100, 'summa_logo').setScale(0.1).setAlpha(0).setDepth(0);
             glitchLayer.add(logo);
         }
     }
     glitchLayer.setVisible(false);
 
-    summaLogo = this.add.image(380, 580, 'summa_logo').setScale(0.12).setOrigin(1, 1).setDepth(1).setAlpha(0.6);
+    summaLogo = this.add.image(380, 580, 'summa_logo').setScale(0.12).setOrigin(1, 1).setDepth(2).setAlpha(0.6);
 
     starGroup = this.add.group();
     this.time.addEvent({ delay: 300, callback: () => { 
@@ -206,15 +206,14 @@ function create() {
 function update() {
     starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if (s.x < -20) s.destroy(); });
 
-    // 2. GLITCH ANIMATION LOGIC
     if (glitchLayer && glitchLayer.visible) {
         glitchLayer.getChildren().forEach(logo => {
-            if (Math.random() > 0.92) {
-                logo.setAlpha(Phaser.Math.FloatBetween(0.05, 0.25));
-                logo.setX(logo.x + Phaser.Math.Between(-5, 5));
-                logo.setTint(Math.random() > 0.5 ? 0xff0000 : 0x00ffff); // Red/Cyan glitch tint
+            if (Math.random() > 0.88) {
+                logo.setAlpha(Phaser.Math.FloatBetween(0.1, 0.35));
+                logo.setX(logo.x + Phaser.Math.Between(-10, 10));
+                logo.setTint(Math.random() > 0.5 ? 0xff0000 : 0x00ffff);
             } else {
-                logo.setAlpha(0.08);
+                logo.setAlpha(0.12);
                 logo.clearTint();
             }
         });
