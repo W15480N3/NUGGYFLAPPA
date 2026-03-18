@@ -108,12 +108,14 @@ function resetIdleTimer() {
 window.addEventListener('mousedown', resetIdleTimer);
 window.addEventListener('touchstart', resetIdleTimer);
 
+// NEW SFX ADDED HERE
 function playSfx(type) {
     if (isMuted) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
     const now = audioCtx.currentTime;
+    
     if (type === 'jump') { 
         osc.type = 'triangle'; osc.frequency.setValueAtTime(180, now); 
         osc.frequency.exponentialRampToValueAtTime(30, now + 0.15); 
@@ -124,6 +126,11 @@ function playSfx(type) {
         osc.frequency.linearRampToValueAtTime(20, now + 0.4); 
         gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); 
         osc.start(); osc.stop(now + 0.4); 
+    } else if (type === 'score') { 
+        osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); 
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1); 
+        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); 
+        osc.start(); osc.stop(now + 0.1); 
     }
 }
 
@@ -207,7 +214,10 @@ function update() {
         }
         if (bong.x < player.x && !bong.scored) { 
             score += 0.5; 
-            if(Math.floor(score) > Math.floor(score - 0.5)) scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); 
+            if(Math.floor(score) > Math.floor(score - 0.5)) {
+                scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); 
+                playSfx('score'); // TRIGGER SCORE SOUND
+            }
             bong.scored = true; 
         }
     });
