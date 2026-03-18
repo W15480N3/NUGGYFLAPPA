@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>HoppyNug - SUMMA</title>
+    <title>HoppyNug - SUMMA LUXE</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -11,25 +11,31 @@
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1000; }
         
+        /* 1. GOLDEN HOUR GLOW ANIMATION */
+        @keyframes goldPulse {
+            0% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); border-color: #ffcc00; }
+            50% { box-shadow: 0 0 60px rgba(255, 204, 0, 0.8); border-color: #ffffff; }
+            100% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); border-color: #ffcc00; }
+        }
+
         .menu { 
-            pointer-events: auto; background: rgba(10, 5, 0, 0.98); 
-            border: 3px solid #ffcc00; /* SUMMA Yellow */
-            border-radius: 20px; padding: 40px; 
-            color: white; text-align: center; box-shadow: 0 0 50px #000; 
-            text-transform: uppercase; width: 300px; display: none;
-            position: absolute;
+            pointer-events: auto; background: rgba(10, 5, 0, 0.95); 
+            border: 3px solid #ffcc00; border-radius: 20px; padding: 40px; 
+            color: white; text-align: center; text-transform: uppercase; width: 300px; display: none;
+            position: absolute; animation: goldPulse 3s infinite ease-in-out;
         }
         
-        #game-over { z-index: 3000; border-color: #ffffff; }
-        #leaderboard-screen { z-index: 2500; border-color: #ffffff; }
+        #game-over { z-index: 3000; animation: none; border-color: #ffffff; box-shadow: 0 0 50px #000; }
+        #leaderboard-screen { z-index: 2500; }
         #start-menu { z-index: 2000; }
 
         input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
-        button { background: #ffcc00; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; }
+        button { background: #ffcc00; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; transition: 0.2s; }
+        button:active { transform: scale(0.95); background: #ffffff; }
         
         .glow-text { color: #ffcc00; text-shadow: 0 0 20px #ffcc00; }
-        .gold { color: #ffffff; text-shadow: 0 0 20px #ffffff; font-size: 32px; }
-        #session-record { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #ffffff; font-weight: 900; z-index: 101; font-size: 22px; text-shadow: 0 0 15px #ffffff; pointer-events: none; }
+        .gold { color: #ffffff; text-shadow: 0 0 20px #ffcc00; font-size: 32px; }
+        #session-record { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 101; font-size: 22px; text-shadow: 0 0 15px rgba(255,204,0,0.5); pointer-events: none; }
         #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #ffcc00; font-size: 24px; cursor: pointer; z-index: 4000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #ffcc00; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -41,7 +47,7 @@
         <div id="start-menu" class="menu" style="display: block;">
             <h1 class="glow-text" style="margin:0; font-size: 40px; font-weight: 900;">HOPPYNUG</h1>
             <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
-            <p id="best-display" style="color: #666; margin: 10px 0; font-size: 14px;">PERSONAL BEST: 0</p>
+            <p id="best-display" style="color: #888; margin: 10px 0; font-size: 14px;">PERSONAL BEST: 0</p>
             <button id="start-btn">LIGHT UP</button>
         </div>
 
@@ -73,10 +79,7 @@ let bgMusic;
 document.getElementById('mute-btn').onclick = function() {
     isMuted = !isMuted;
     this.innerText = isMuted ? "🔇" : "🔊";
-    if (bgMusic) {
-        if (isMuted) bgMusic.pause();
-        else if (isStarted) bgMusic.resume();
-    }
+    if (bgMusic) { if (isMuted) bgMusic.pause(); else if (isStarted) bgMusic.resume(); }
 };
 
 function showOnly(id) {
@@ -108,28 +111,23 @@ function resetIdleTimer() {
 window.addEventListener('mousedown', resetIdleTimer);
 window.addEventListener('touchstart', resetIdleTimer);
 
-// NEW SFX ADDED HERE
 function playSfx(type) {
     if (isMuted) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
     const now = audioCtx.currentTime;
-    
     if (type === 'jump') { 
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(180, now); 
-        osc.frequency.exponentialRampToValueAtTime(30, now + 0.15); 
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(180, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.15); 
         gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0, now + 0.15); 
         osc.start(); osc.stop(now + 0.15); 
     } else if (type === 'crash') { 
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); 
-        osc.frequency.linearRampToValueAtTime(20, now + 0.4); 
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(20, now + 0.4); 
         gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); 
         osc.start(); osc.stop(now + 0.4); 
     } else if (type === 'score') { 
-        osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); 
-        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1); 
-        gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); 
+        osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1); 
+        gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); 
         osc.start(); osc.stop(now + 0.1); 
     }
 }
@@ -140,31 +138,35 @@ const config = {
     scene: { preload, create, update } 
 };
 const game = new Phaser.Game(config);
-let player, bongs, lighters, flames, vaporTrail, vaporUp, vaporDown, starGroup, scoreText, scoreBox, summaLogo;
+let player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, scoreText, scoreBox, summaLogo;
 
 function preload() {
     this.load.image('nug', 'nug.png'); this.load.image('nug_active', 'nug_active.png'); 
     this.load.image('bong', 'bong.png'); this.load.image('lighter', 'lighter.png'); 
-    this.load.image('flame', 'flame.png');
-    this.load.audio('bgm', 'background_track.mp3');
+    this.load.image('flame', 'flame.png'); this.load.audio('bgm', 'background_track.mp3');
     this.load.image('summa_logo', 'summa.png'); 
     
     let g = this.make.graphics(); g.fillStyle(0xffffff, 1); g.fillCircle(8, 8, 8); g.generateTexture('vapor_puff', 16, 16);
     let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2); s.generateTexture('pixel_star', 4, 4);
+    let t = this.make.graphics(); t.fillStyle(0xffcc00, 1); t.fillCircle(2, 2, 2); t.generateTexture('terp_bit', 4, 4);
 }
 
 function create() {
     summaLogo = this.add.image(380, 580, 'summa_logo').setScale(0.12).setOrigin(1, 1).setDepth(1).setAlpha(0.6);
 
+    // 3. PARALLAX BACKGROUND
     starGroup = this.add.group();
-    this.time.addEvent({ delay: 450, callback: () => { 
+    this.time.addEvent({ delay: 300, callback: () => { 
+        let speed = Phaser.Math.FloatBetween(0.3, 1.2);
         let star = this.add.image(420, Phaser.Math.Between(0, 600), 'pixel_star'); 
-        star.setAlpha(Phaser.Math.FloatBetween(0.1, 0.3)); starGroup.add(star); 
+        star.setAlpha(speed / 1.5).setData('speed', speed); starGroup.add(star); 
     }, loop: true });
 
+    // 2. TERPENE SPARKLES & VAPOR
     vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.3, end: 1.2 }, alpha: { start: 0.3, end: 0 }, lifespan: 700, speedX: { min: -100, max: -150 }, frequency: -1 }).setDepth(5);
-    vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: -40, max: -80 }, speedX: { min: -50, max: 50 }, frequency: -1 }).setDepth(4);
-    vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: 40, max: 80 }, speedX: { min: -50, max: 50 }, frequency: -1 }).setDepth(4);
+    terpSparkle = this.add.particles(0, 0, 'terp_bit', { scale: { start: 1, end: 0 }, alpha: { start: 1, end: 0 }, lifespan: 600, speed: { min: 20, max: 80 }, frequency: -1 }).setDepth(6);
+    vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: -40, max: -80 }, frequency: -1 }).setDepth(4);
+    vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: 40, max: 80 }, frequency: -1 }).setDepth(4);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(45, 290, 95); player.body.allowGravity = false;
@@ -179,8 +181,8 @@ function create() {
         if (!isStarted) return; 
         player.setVelocityY(-410); playSfx('jump');
         player.setTexture('nug_active'); 
+        terpSparkle.emitParticleAt(player.x, player.y, 5); // Sparkle on jump
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
-        scoreText.setX(20 + Phaser.Math.Between(-4, 4));
     });
 
     this.physics.add.overlap(player, bongs, gameOver, null, this);
@@ -188,50 +190,41 @@ function create() {
     
     document.getElementById('start-btn').onclick = (e) => { e.stopPropagation(); startGame.call(this); };
     document.getElementById('retry-btn').onclick = (e) => { e.stopPropagation(); window.location.reload(); };
-    
     resetIdleTimer();
 }
 
-function drawScoreBox(xOffset = 0, yOffset = 0) {
-    scoreBox.clear(); scoreBox.lineStyle(2, 0xffcc00, 0.8);
-    scoreBox.strokeRect(20 + xOffset, 20 + yOffset, scoreText.width + 20, scoreText.height + 20);
-}
-
 function update() {
-    starGroup.getChildren().forEach(s => { s.x -= 0.6; if (s.x < -20) s.destroy(); });
+    starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if (s.x < -20) s.destroy(); });
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
     
-    scoreText.setX(Phaser.Math.Linear(scoreText.x, 30, 0.15));
-    drawScoreBox(scoreText.x - 30, scoreText.y - 30);
+    scoreBox.clear(); scoreBox.lineStyle(2, 0xffcc00, 0.8);
+    scoreBox.strokeRect(20, 20, scoreText.width + 20, scoreText.height + 20);
 
     if (player.y > 600 || player.y < 0) gameOver.call(this);
     if (this.time.now % 60 < 20) vaporTrail.emitParticleAt(player.x - 25, player.y + 5);
 
     bongs.getChildren().forEach(bong => {
         if (bong.x > 0 && bong.x < 420 && this.time.now % 120 < 20) {
-            if (bong.flipY) vaporDown.emitParticleAt(bong.x, bong.y + 10);
-            else vaporUp.emitParticleAt(bong.x, bong.y - 10);
+            if (bong.flipY) vaporDown.emitParticleAt(bong.x, bong.y + 10); else vaporUp.emitParticleAt(bong.x, bong.y - 10);
         }
         if (bong.x < player.x && !bong.scored) { 
             score += 0.5; 
             if(Math.floor(score) > Math.floor(score - 0.5)) {
                 scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); 
-                playSfx('score'); // TRIGGER SCORE SOUND
+                playSfx('score'); terpSparkle.emitParticleAt(player.x, player.y, 10); // Sparkle on score
             }
             bong.scored = true; 
         }
     });
 
     lighters.getChildren().forEach((l, i) => { 
-        let f = flames.getChildren()[i]; 
-        l.angle += 3.5; l.y = l.startY + Math.sin(this.time.now / 300) * 40; 
+        let f = flames.getChildren()[i]; l.angle += 3.5; l.y = l.startY + Math.sin(this.time.now / 300) * 40; 
         if (f) { let rad = Phaser.Math.DegToRad(l.angle + 180); f.x = l.x + Math.cos(rad) * 45; f.y = l.y + Math.sin(rad) * 45; f.angle = l.angle; }
     });
 }
 
 function startGame() { 
-    clearTimeout(idleTimer);
-    showOnly(null); summaLogo.setAlpha(0.2); 
+    clearTimeout(idleTimer); showOnly(null); summaLogo.setAlpha(0.2); 
     playerName = document.getElementById('player-name').value || "PILOT"; 
     localStorage.setItem('hoppyNugName', playerName);
     scoreText.setText(`${playerName.toUpperCase()}: 0`); 
@@ -258,17 +251,17 @@ function spawnBongs() {
 }
 
 function gameOver() { 
-    if (!isStarted) return; 
-    isStarted = false; playSfx('crash'); this.physics.pause(); 
+    if (!isStarted) return; isStarted = false; playSfx('crash'); this.physics.pause(); 
     let final = Math.floor(score);
-    if (final > highScore) localStorage.setItem('hoppyNugBest', final);
+    // 4. HIGH SCORE CELEBRATION (WHITE SCREEN FLASH)
     if (final > champScore) {
+        this.cameras.main.flash(500, 255, 255, 255);
         localStorage.setItem('hoppyNugChampScore', final);
         localStorage.setItem('hoppyNugChampName', playerName);
         champScore = final; champName = playerName;
     }
-    updateUI();
-    showOnly('game-over'); 
+    if (final > highScore) localStorage.setItem('hoppyNugBest', final);
+    updateUI(); showOnly('game-over'); 
     document.getElementById('final-score-text').innerText = "SCORE: " + final; 
 }
 </script>
