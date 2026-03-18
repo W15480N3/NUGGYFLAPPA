@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>HoppyNug - SUMMA LUXE</title>
+    <title>HoppyNug - SUMMA GLITCH</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -11,7 +11,6 @@
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1000; }
         
-        /* 1. GOLDEN HOUR GLOW ANIMATION */
         @keyframes goldPulse {
             0% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); border-color: #ffcc00; }
             50% { box-shadow: 0 0 60px rgba(255, 204, 0, 0.8); border-color: #ffffff; }
@@ -26,7 +25,7 @@
         }
         
         #game-over { z-index: 3000; animation: none; border-color: #ffffff; box-shadow: 0 0 50px #000; }
-        #leaderboard-screen { z-index: 2500; }
+        #leaderboard-screen { z-index: 2500; } /* Glitch logic tied to this ID */
         #start-menu { z-index: 2000; }
 
         input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
@@ -87,6 +86,9 @@ function showOnly(id) {
     document.getElementById('leaderboard-screen').style.display = 'none';
     document.getElementById('game-over').style.display = 'none';
     if(id) document.getElementById(id).style.display = 'block';
+    
+    // Toggle Glitch Layer based on Leaderboard screen
+    if (glitchLayer) glitchLayer.setVisible(id === 'leaderboard-screen');
 }
 
 function updateUI() {
@@ -138,7 +140,7 @@ const config = {
     scene: { preload, create, update } 
 };
 const game = new Phaser.Game(config);
-let player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, scoreText, scoreBox, summaLogo;
+let player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, scoreText, scoreBox, summaLogo, glitchLayer;
 
 function preload() {
     this.load.image('nug', 'nug.png'); this.load.image('nug_active', 'nug_active.png'); 
@@ -152,9 +154,18 @@ function preload() {
 }
 
 function create() {
+    // 1. TILING GLITCH LAYER (Background for Leaderboard)
+    glitchLayer = this.add.group();
+    for(let i=0; i<4; i++) {
+        for(let j=0; j<6; j++) {
+            let logo = this.add.image(i * 120 + 20, j * 120 + 20, 'summa_logo').setScale(0.08).setAlpha(0).setDepth(0);
+            glitchLayer.add(logo);
+        }
+    }
+    glitchLayer.setVisible(false);
+
     summaLogo = this.add.image(380, 580, 'summa_logo').setScale(0.12).setOrigin(1, 1).setDepth(1).setAlpha(0.6);
 
-    // 3. PARALLAX BACKGROUND
     starGroup = this.add.group();
     this.time.addEvent({ delay: 300, callback: () => { 
         let speed = Phaser.Math.FloatBetween(0.3, 1.2);
@@ -162,7 +173,6 @@ function create() {
         star.setAlpha(speed / 1.5).setData('speed', speed); starGroup.add(star); 
     }, loop: true });
 
-    // 2. TERPENE SPARKLES & VAPOR
     vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.3, end: 1.2 }, alpha: { start: 0.3, end: 0 }, lifespan: 700, speedX: { min: -100, max: -150 }, frequency: -1 }).setDepth(5);
     terpSparkle = this.add.particles(0, 0, 'terp_bit', { scale: { start: 1, end: 0 }, alpha: { start: 1, end: 0 }, lifespan: 600, speed: { min: 20, max: 80 }, frequency: -1 }).setDepth(6);
     vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: -40, max: -80 }, frequency: -1 }).setDepth(4);
@@ -181,7 +191,7 @@ function create() {
         if (!isStarted) return; 
         player.setVelocityY(-410); playSfx('jump');
         player.setTexture('nug_active'); 
-        terpSparkle.emitParticleAt(player.x, player.y, 5); // Sparkle on jump
+        terpSparkle.emitParticleAt(player.x, player.y, 5);
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
@@ -195,6 +205,21 @@ function create() {
 
 function update() {
     starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if (s.x < -20) s.destroy(); });
+
+    // 2. GLITCH ANIMATION LOGIC
+    if (glitchLayer && glitchLayer.visible) {
+        glitchLayer.getChildren().forEach(logo => {
+            if (Math.random() > 0.92) {
+                logo.setAlpha(Phaser.Math.FloatBetween(0.05, 0.25));
+                logo.setX(logo.x + Phaser.Math.Between(-5, 5));
+                logo.setTint(Math.random() > 0.5 ? 0xff0000 : 0x00ffff); // Red/Cyan glitch tint
+            } else {
+                logo.setAlpha(0.08);
+                logo.clearTint();
+            }
+        });
+    }
+
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
     
     scoreBox.clear(); scoreBox.lineStyle(2, 0xffcc00, 0.8);
@@ -211,7 +236,7 @@ function update() {
             score += 0.5; 
             if(Math.floor(score) > Math.floor(score - 0.5)) {
                 scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); 
-                playSfx('score'); terpSparkle.emitParticleAt(player.x, player.y, 10); // Sparkle on score
+                playSfx('score'); terpSparkle.emitParticleAt(player.x, player.y, 10);
             }
             bong.scored = true; 
         }
@@ -253,7 +278,6 @@ function spawnBongs() {
 function gameOver() { 
     if (!isStarted) return; isStarted = false; playSfx('crash'); this.physics.pause(); 
     let final = Math.floor(score);
-    // 4. HIGH SCORE CELEBRATION (WHITE SCREEN FLASH)
     if (final > champScore) {
         this.cameras.main.flash(500, 255, 255, 255);
         localStorage.setItem('hoppyNugChampScore', final);
