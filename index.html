@@ -32,12 +32,22 @@
     <div id="mute-btn">🔊</div>
     <div id="ui-layer">
         <div id="session-record">TENT RECORD: 0</div>
+        
         <div id="start-menu" class="menu" style="display: block;">
             <h1 class="glow-text" style="margin:0; font-size: 40px;">HOPPYNUG</h1>
             <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
             <p id="best-display" style="color: #888; font-size: 14px;">PERSONAL BEST: 0</p>
             <button id="start-btn">LIGHT UP</button>
         </div>
+
+        <div id="leaderboard-screen" class="menu">
+            <h2 style="color: #ffffff; margin:0;">CHAMPION STASH</h2>
+            <hr style="border: 1px solid #444; margin: 20px 0;">
+            <h1 id="champ-name" style="color: #ffffff; text-shadow: 0 0 20px #ffcc00;">NONE</h1>
+            <h2 id="champ-score" class="glow-text" style="font-size: 45px;">0</h2>
+            <p style="font-size: 12px; color: #ffcc00;">TAP ANYWHERE TO CHALLENGE</p>
+        </div>
+
         <div id="game-over" class="menu">
             <h1 style="color: #ffffff; margin:0;">CASHED OUT!</h1>
             <p id="final-score-text" style="font-size: 28px; color: #ffcc00;">SCORE: 0</p>
@@ -46,9 +56,10 @@
     </div>
 
 <script>
-let isMuted = false, score = 0, isStarted = false, hasShield = false;
+let isMuted = false, score = 0, isStarted = false, hasShield = false, idleTimer;
 let playerName = localStorage.getItem('hoppyNugName') || "";
 let highScore = parseInt(localStorage.getItem('hoppyNugBest')) || 0;
+let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
 let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, starGroupFar, scoreText, shieldStatusText, footerLogo;
 
@@ -76,7 +87,6 @@ function preload() {
 function create() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // Parallax Stars
     starGroupFar = this.add.group(); starGroup = this.add.group();
     this.time.addEvent({ delay: 200, callback: () => {
         let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.2).setScale(0.5);
@@ -87,17 +97,15 @@ function create() {
         star.setData('speed', 3); starGroup.add(star);
     }, loop: true });
 
-    // Footer Logo
     footerLogo = this.add.image(200, 560, 'summa_logo').setScale(0.12).setAlpha(0.4).setDepth(1);
 
-    // Particles
     vaporTrail = this.add.particles(0, 0, 'vapor', { scale: { start: 0.3, end: 1.2 }, alpha: { start: 0.4, end: 0 }, lifespan: 800, speedX: { min: -100, max: -150 }, frequency: -1 }).setDepth(5);
     terpSparkle = this.add.particles(0, 0, 'terp', { scale: { start: 1, end: 0 }, alpha: { start: 1, end: 0 }, lifespan: 600, speed: { min: 40, max: 100 }, frequency: -1 }).setDepth(6);
     vaporUp = this.add.particles(0, 0, 'vapor', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: -50, max: -100 }, frequency: -1 }).setDepth(4);
     vaporDown = this.add.particles(0, 0, 'vapor', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: 50, max: 100 }, frequency: -1 }).setDepth(4);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
-    player.body.setCircle(45, 290, 95); // LOCKED HITBOX
+    player.body.setCircle(45, 290, 95); 
     player.body.allowGravity = false;
 
     bongs = this.physics.add.group(); 
@@ -109,7 +117,6 @@ function create() {
     shieldStatusText = this.add.text(30, 60, '', { fontSize: '14px', fill: '#ffffff', fontFamily: 'Orbitron' }).setDepth(100);
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
 
-    // High Priority Collision
     this.physics.add.overlap(player, shieldLogos, (p, logo) => {
         logo.destroy(); hasShield = true; playSfx('shield');
         this.cameras.main.flash(200, 255, 204, 0);
@@ -119,22 +126,53 @@ function create() {
     this.physics.add.overlap(player, lighters, handleCollision, null, this);
 
     this.input.on('pointerdown', () => { 
-        if (!isStarted) return; 
+        if (!isStarted) {
+            // If leaderboard is showing, go back to start menu
+            if(document.getElementById('leaderboard-screen').style.display === 'block') {
+                showMenu('start-menu');
+            }
+            return;
+        } 
         player.setVelocityY(-410); playSfx('jump');
         player.setTexture('nug_active'); 
         terpSparkle.emitParticleAt(player.x, player.y, 5); 
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
-    document.getElementById('start-btn').onclick = () => {
-        document.getElementById('start-menu').style.display = 'none';
+    document.getElementById('start-btn').onclick = (e) => {
+        e.stopPropagation();
+        showMenu(null);
         playerName = document.getElementById('player-name').value || "PILOT"; 
         localStorage.setItem('hoppyNugName', playerName);
         isStarted = true; player.body.allowGravity = true; 
         if (!isMuted) bgMusic.play();
         this.time.addEvent({ delay: 2200, callback: spawnLevel, callbackScope: this, loop: true }); 
+        clearInterval(idleTimer);
     };
+
     updateUI();
+    startIdleCycle();
+}
+
+function startIdleCycle() {
+    idleTimer = setInterval(() => {
+        if (!isStarted) {
+            const startMenu = document.getElementById('start-menu');
+            const leaderMenu = document.getElementById('leaderboard-screen');
+            if (startMenu.style.display === 'block') {
+                showMenu('leaderboard-screen');
+            } else {
+                showMenu('start-menu');
+            }
+        }
+    }, 5000);
+}
+
+function showMenu(id) {
+    document.getElementById('start-menu').style.display = 'none';
+    document.getElementById('leaderboard-screen').style.display = 'none';
+    document.getElementById('game-over').style.display = 'none';
+    if(id) document.getElementById(id).style.display = 'block';
 }
 
 function update() {
@@ -160,7 +198,7 @@ function update() {
     });
 
     shieldLogos.getChildren().forEach(logo => {
-        logo.y = logo.startY + Math.sin(this.time.now / 400) * 30; // Float bob
+        logo.y = logo.startY + Math.sin(this.time.now / 400) * 30; 
     });
 
     lighters.getChildren().forEach((l, i) => { 
@@ -194,7 +232,7 @@ function spawnLevel() {
         let pwr = shieldLogos.create(750, sy, 'summa_logo').setScale(0.12).setDepth(20);
         pwr.body.allowGravity = false; pwr.setVelocityX(-210);
         pwr.startY = sy;
-        pwr.body.setCircle(200).setOffset(60, 60); // MASSIVE HITBOX BUFF
+        pwr.body.setCircle(200).setOffset(60, 60); 
     }
 }
 
@@ -212,8 +250,10 @@ function gameOver() {
     if (final > champScore) {
         localStorage.setItem('hoppyNugChampScore', final);
         localStorage.setItem('hoppyNugChampName', playerName);
+        champScore = final; champName = playerName;
     }
-    document.getElementById('game-over').style.display = 'block';
+    updateUI();
+    showMenu('game-over');
     document.getElementById('final-score-text').innerText = "SCORE: " + final; 
 }
 
@@ -232,6 +272,8 @@ function playSfx(type) {
 function updateUI() {
     document.getElementById('session-record').innerText = `TENT RECORD: ${champScore}`;
     document.getElementById('best-display').innerText = "PERSONAL BEST: " + highScore;
+    document.getElementById('champ-name').innerText = champName.toUpperCase();
+    document.getElementById('champ-score').innerText = champScore;
 }
 
 document.getElementById('mute-btn').onclick = function() {
