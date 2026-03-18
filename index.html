@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>HoppyNug - SUMMA EDITION</title>
+    <title>HoppyNug - SUMMA</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -11,7 +11,6 @@
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 1000; }
         
-        /* SUMMA Yellow UI Styling */
         .menu { 
             pointer-events: auto; background: rgba(10, 5, 0, 0.98); 
             border: 3px solid #ffcc00; /* SUMMA Yellow */
@@ -21,15 +20,13 @@
             position: absolute;
         }
         
-        /* Menu Layering */
-        #game-over { z-index: 3000; border-color: #ffffff; /* SUMMA White */ }
+        #game-over { z-index: 3000; border-color: #ffffff; }
         #leaderboard-screen { z-index: 2500; border-color: #ffffff; }
         #start-menu { z-index: 2000; }
 
         input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
         button { background: #ffcc00; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; }
         
-        /* Branded text effects */
         .glow-text { color: #ffcc00; text-shadow: 0 0 20px #ffcc00; }
         .gold { color: #ffffff; text-shadow: 0 0 20px #ffffff; font-size: 32px; }
         #session-record { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #ffffff; font-weight: 900; z-index: 101; font-size: 22px; text-shadow: 0 0 15px #ffffff; pointer-events: none; }
@@ -42,16 +39,16 @@
         <div id="session-record">TENT RECORD: 0</div>
         
         <div id="start-menu" class="menu" style="display: block;">
-            <h1 class="glow-text" style="margin:0; font-size: 36px; font-weight: 900;">SUMMA HOOPS</h1>
-            <input type="text" id="player-name" placeholder="PILOT TAG" maxlength="10">
+            <h1 class="glow-text" style="margin:0; font-size: 40px; font-weight: 900;">HOPPYNUG</h1>
+            <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
             <p id="best-display" style="color: #666; margin: 10px 0; font-size: 14px;">PERSONAL BEST: 0</p>
-            <button id="start-btn">IGNITE</button>
+            <button id="start-btn">LIGHT UP</button>
         </div>
 
         <div id="leaderboard-screen" class="menu">
-            <h2 style="color: #ffffff; margin:0;">THE CONCENTRATE CACHE</h2>
+            <h2 style="color: #ffffff; margin:0;">CHAMPION STASH</h2>
             <hr style="border: 1px solid #444; margin: 20px 0;">
-            <p style="font-size: 14px; color: #888;">REIGNING CHAMPION:</p>
+            <p style="font-size: 14px; color: #888;">CURRENT REIGNING CHAMP:</p>
             <h1 id="champ-name" class="gold">NONE</h1>
             <h2 id="champ-score" class="glow-text" style="font-size: 40px;">0</h2>
             <p style="font-size: 10px; color: #ffcc00; margin-top: 20px;">TAP TO CHALLENGE</p>
@@ -60,7 +57,7 @@
         <div id="game-over" class="menu">
             <h1 style="color: #ffffff; margin:0; font-size: 36px;">CASHED OUT!</h1>
             <p id="final-score-text" style="font-size: 28px; margin: 20px 0; color: #ffcc00;">SCORE: 0</p>
-            <button id="retry-btn">RE-IGNITE</button>
+            <button id="retry-btn">RE-UP</button>
         </div>
     </div>
 
@@ -73,7 +70,6 @@ let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
 let bgMusic;
 
-// PRE-GAME MUTE LOGIC
 document.getElementById('mute-btn').onclick = function() {
     isMuted = !isMuted;
     this.innerText = isMuted ? "🔇" : "🔊";
@@ -98,7 +94,6 @@ function updateUI() {
 }
 updateUI();
 
-// IDLE TIMER
 function resetIdleTimer() {
     if (isStarted || document.getElementById('game-over').style.display === 'block') return;
     clearTimeout(idleTimer);
@@ -145,16 +140,13 @@ function preload() {
     this.load.image('bong', 'bong.png'); this.load.image('lighter', 'lighter.png'); 
     this.load.image('flame', 'flame.png');
     this.load.audio('bgm', 'background_track.mp3');
-    // Load SUMMA Logo PNG
     this.load.image('summa_logo', 'summa.png'); 
     
-    // Create White Vapor texture
     let g = this.make.graphics(); g.fillStyle(0xffffff, 1); g.fillCircle(8, 8, 8); g.generateTexture('vapor_puff', 16, 16);
     let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2); s.generateTexture('pixel_star', 4, 4);
 }
 
 function create() {
-    // WATERMARK LOGO Restoration (Anchored Bottom Right)
     summaLogo = this.add.image(380, 580, 'summa_logo').setScale(0.12).setOrigin(1, 1).setDepth(1).setAlpha(0.6);
 
     starGroup = this.add.group();
@@ -163,7 +155,6 @@ function create() {
         star.setAlpha(Phaser.Math.FloatBetween(0.1, 0.3)); starGroup.add(star); 
     }, loop: true });
 
-    // WHITE VAPOR Trail ( SUMMA Style )
     vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.3, end: 1.2 }, alpha: { start: 0.3, end: 0 }, lifespan: 700, speedX: { min: -100, max: -150 }, frequency: -1 }).setDepth(5);
     vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: -40, max: -80 }, speedX: { min: -50, max: 50 }, frequency: -1 }).setDepth(4);
     vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: 40, max: 80 }, speedX: { min: -50, max: 50 }, frequency: -1 }).setDepth(4);
@@ -207,12 +198,9 @@ function update() {
     drawScoreBox(scoreText.x - 30, scoreText.y - 30);
 
     if (player.y > 600 || player.y < 0) gameOver.call(this);
-    
-    // Vapor Trail emit
     if (this.time.now % 60 < 20) vaporTrail.emitParticleAt(player.x - 25, player.y + 5);
 
     bongs.getChildren().forEach(bong => {
-        // Vapor Billow emit
         if (bong.x > 0 && bong.x < 420 && this.time.now % 120 < 20) {
             if (bong.flipY) vaporDown.emitParticleAt(bong.x, bong.y + 10);
             else vaporUp.emitParticleAt(bong.x, bong.y - 10);
@@ -233,14 +221,12 @@ function update() {
 
 function startGame() { 
     clearTimeout(idleTimer);
-    showOnly(null); summaLogo.setAlpha(0.2); // Watermark fades when playing
+    showOnly(null); summaLogo.setAlpha(0.2); 
     playerName = document.getElementById('player-name').value || "PILOT"; 
     localStorage.setItem('hoppyNugName', playerName);
     scoreText.setText(`${playerName.toUpperCase()}: 0`); 
     isStarted = true; player.body.allowGravity = true; 
-    
     if (bgMusic && !isMuted) bgMusic.play();
-    
     this.time.addEvent({ delay: 2200, callback: spawnBongs, callbackScope: this, loop: true }); 
     this.time.addEvent({ delay: 5000, callback: spawnLighter, callbackScope: this, loop: true }); 
 }
