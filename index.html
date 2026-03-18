@@ -19,23 +19,21 @@
 
         .menu { 
             pointer-events: auto; 
-            background: rgba(10, 5, 0, 0.75); /* Fixed transparency to show glitch logos */
+            background: rgba(10, 5, 0, 0.75); 
             border: 3px solid #ffcc00; border-radius: 20px; padding: 40px; 
             color: white; text-align: center; text-transform: uppercase; width: 300px; display: none;
             position: absolute; animation: goldPulse 3s infinite ease-in-out;
         }
         
-        #game-over { z-index: 6000; animation: none; border-color: #ffffff; box-shadow: 0 0 50px #000; }
+        #game-over { z-index: 6000; }
         #leaderboard-screen { z-index: 5500; }
         #start-menu { z-index: 5000; }
 
         input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
-        button { background: #ffcc00; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; transition: 0.2s; }
-        button:active { transform: scale(0.95); background: #ffffff; }
+        button { background: #ffcc00; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; }
         
         .glow-text { color: #ffcc00; text-shadow: 0 0 20px #ffcc00; }
-        .gold { color: #ffffff; text-shadow: 0 0 20px #ffcc00; font-size: 32px; }
-        #session-record { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 101; font-size: 22px; text-shadow: 0 0 15px rgba(255,204,0,0.5); pointer-events: none; }
+        #session-record { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 101; font-size: 22px; pointer-events: none; }
         #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #ffcc00; font-size: 24px; cursor: pointer; z-index: 7000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #ffcc00; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -45,24 +43,23 @@
         <div id="session-record">TENT RECORD: 0</div>
         
         <div id="start-menu" class="menu" style="display: block;">
-            <h1 class="glow-text" style="margin:0; font-size: 40px; font-weight: 900;">HOPPYNUG</h1>
+            <h1 class="glow-text" style="margin:0; font-size: 40px;">HOPPYNUG</h1>
             <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
-            <p id="best-display" style="color: #888; margin: 10px 0; font-size: 14px;">PERSONAL BEST: 0</p>
+            <p id="best-display" style="color: #888; font-size: 14px;">PERSONAL BEST: 0</p>
             <button id="start-btn">LIGHT UP</button>
         </div>
 
         <div id="leaderboard-screen" class="menu">
             <h2 style="color: #ffffff; margin:0;">CHAMPION STASH</h2>
             <hr style="border: 1px solid #444; margin: 20px 0;">
-            <p style="font-size: 14px; color: #888;">CURRENT REIGNING CHAMP:</p>
-            <h1 id="champ-name" class="gold">NONE</h1>
+            <h1 id="champ-name" style="color: #ffffff; text-shadow: 0 0 20px #ffcc00;">NONE</h1>
             <h2 id="champ-score" class="glow-text" style="font-size: 40px;">0</h2>
-            <p style="font-size: 10px; color: #ffcc00; margin-top: 20px;">TAP TO CHALLENGE</p>
+            <p style="font-size: 10px; color: #ffcc00;">TAP TO CHALLENGE</p>
         </div>
 
         <div id="game-over" class="menu">
-            <h1 style="color: #ffffff; margin:0; font-size: 36px;">CASHED OUT!</h1>
-            <p id="final-score-text" style="font-size: 28px; margin: 20px 0; color: #ffcc00;">SCORE: 0</p>
+            <h1 style="color: #ffffff; margin:0;">CASHED OUT!</h1>
+            <p id="final-score-text" style="font-size: 28px; color: #ffcc00;">SCORE: 0</p>
             <button id="retry-btn">RE-UP</button>
         </div>
     </div>
@@ -115,26 +112,13 @@ window.addEventListener('touchstart', resetIdleTimer);
 function playSfx(type) {
     if (isMuted) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
     const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
-    const now = audioCtx.currentTime;
-    if (type === 'jump') { 
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(180, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.15); 
-        gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0, now + 0.15); 
-        osc.start(); osc.stop(now + 0.15); 
-    } else if (type === 'crash') { 
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(20, now + 0.4); 
-        gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); 
-        osc.start(); osc.stop(now + 0.4); 
-    } else if (type === 'score') { 
-        osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1); 
-        gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); 
-        osc.start(); osc.stop(now + 0.1); 
-    } else if (type === 'shield') {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(1000, now + 0.2);
-        gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
-        osc.start(); osc.stop(now + 0.2);
-    }
+    if (type === 'jump') { osc.frequency.setValueAtTime(180, now); gain.gain.linearRampToValueAtTime(0, now + 0.15); osc.start(); osc.stop(now + 0.15); }
+    else if (type === 'score') { osc.frequency.setValueAtTime(800, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(); osc.stop(now + 0.1); }
+    else if (type === 'shield') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); gain.gain.linearRampToValueAtTime(0, now + 0.2); osc.start(); osc.stop(now + 0.2); }
+    else if (type === 'crash') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(); osc.stop(now + 0.4); }
 }
 
 const config = { 
@@ -143,7 +127,7 @@ const config = {
     scene: { preload, create, update } 
 };
 const game = new Phaser.Game(config);
-let player, bongs, lighters, flames, vaporTrail, terpSparkle, starGroup, scoreText, shieldLogos, shieldStatusText, glitchLayer;
+let player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, scoreText, shieldLogos, shieldStatusText, glitchLayer;
 
 function preload() {
     this.load.image('nug', 'nug.png'); 
@@ -160,7 +144,6 @@ function preload() {
 }
 
 function create() {
-    // Background Tiling Glitch (for Idle Screen)
     glitchLayer = this.add.group();
     for(let i=0; i<4; i++) {
         for(let j=0; j<8; j++) {
@@ -179,6 +162,8 @@ function create() {
 
     vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.3, end: 1.2 }, alpha: { start: 0.3, end: 0 }, lifespan: 700, speedX: { min: -100, max: -150 }, frequency: -1 }).setDepth(5);
     terpSparkle = this.add.particles(0, 0, 'terp_bit', { scale: { start: 1, end: 0 }, alpha: { start: 1, end: 0 }, lifespan: 600, speed: { min: 20, max: 80 }, frequency: -1 }).setDepth(6);
+    vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: -40, max: -80 }, frequency: -1 }).setDepth(4);
+    vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.6, end: 2.2 }, alpha: { start: 0.6, end: 0 }, lifespan: 1800, speedY: { min: 40, max: 80 }, frequency: -1 }).setDepth(4);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(45, 290, 95); player.body.allowGravity = false;
@@ -188,7 +173,7 @@ function create() {
     
     bongs = this.physics.add.group(); 
     lighters = this.physics.add.group(); 
-    shieldLogos = this.physics.add.group(); // Power-up Group
+    shieldLogos = this.physics.add.group(); 
     flames = this.add.group();
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
 
@@ -223,6 +208,10 @@ function update() {
     if (this.time.now % 60 < 20) vaporTrail.emitParticleAt(player.x - 25, player.y + 5);
 
     bongs.getChildren().forEach(bong => {
+        // Bong Smoke Logic
+        if (bong.x > 0 && bong.x < 420 && this.time.now % 120 < 20) {
+            if (bong.flipY) vaporDown.emitParticleAt(bong.x, bong.y + 10); else vaporUp.emitParticleAt(bong.x, bong.y - 10);
+        }
         if (bong.x < player.x && !bong.scored) { 
             score += 0.5; 
             if(Math.floor(score) > Math.floor(score - 0.5)) {
@@ -238,14 +227,8 @@ function update() {
         if (f) { let rad = Phaser.Math.DegToRad(l.angle + 180); f.x = l.x + Math.cos(rad) * 45; f.y = l.y + Math.sin(rad) * 45; f.angle = l.angle; }
     });
 
-    // Shield Visual Feedback
-    if (hasShield) {
-        player.setTint(0xffcc00);
-        shieldStatusText.setText("🛡️ SUMMA SHIELD ACTIVE");
-    } else {
-        player.clearTint();
-        shieldStatusText.setText("");
-    }
+    if (hasShield) { player.setTint(0xffcc00); shieldStatusText.setText("🛡️ SUMMA SHIELD ACTIVE"); }
+    else { player.clearTint(); shieldStatusText.setText(""); }
 }
 
 function startGame() { 
@@ -260,13 +243,11 @@ function startGame() {
 
 function spawnLevel() {
     const y = Phaser.Math.Between(150, 450);
-    // Bongs
     const top = bongs.create(550, y - 140, 'bong').setOrigin(0.5, 1).setFlipY(true);
     const bot = bongs.create(550, y + 140, 'bong').setOrigin(0.5, 0);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
 
-    // Lighter (Every 2 cycles)
     if (Math.random() > 0.5) {
         let ly = Phaser.Math.Between(100, 500);
         let l = lighters.create(650, ly, 'lighter').setScale(0.08);
@@ -274,7 +255,6 @@ function spawnLevel() {
         flames.create(l.x - 45, ly, 'flame').setScale(0.08);
     }
 
-    // Power-up Shield (20% Chance)
     if (Math.random() > 0.8) {
         let pwr = shieldLogos.create(750, Phaser.Math.Between(100, 500), 'summa_logo').setScale(0.12);
         pwr.body.allowGravity = false; pwr.setVelocityX(-210);
@@ -282,21 +262,15 @@ function spawnLevel() {
 }
 
 function collectShield(player, logo) {
-    logo.destroy();
-    hasShield = true;
-    playSfx('shield');
+    logo.destroy(); hasShield = true; playSfx('shield');
     this.cameras.main.flash(250, 255, 204, 0);
 }
 
 function handleCollision(player, obstacle) {
     if (hasShield) {
-        hasShield = false;
-        obstacle.destroy();
-        this.cameras.main.shake(300, 0.02);
-        playSfx('crash'); // Sound for the break
-    } else {
-        gameOver.call(this);
-    }
+        hasShield = false; obstacle.destroy();
+        this.cameras.main.shake(300, 0.02); playSfx('crash');
+    } else { gameOver.call(this); }
 }
 
 function gameOver() { 
@@ -308,7 +282,6 @@ function gameOver() {
         localStorage.setItem('hoppyNugChampName', playerName);
         champScore = final; champName = playerName;
     }
-    if (final > highScore) localStorage.setItem('hoppyNugBest', final);
     updateUI(); showOnly('game-over'); 
     document.getElementById('final-score-text').innerText = "SCORE: " + final; 
 }
