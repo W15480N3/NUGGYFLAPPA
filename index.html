@@ -61,7 +61,7 @@ let playerName = localStorage.getItem('hoppyNugName') || "";
 let highScore = parseInt(localStorage.getItem('hoppyNugBest')) || 0;
 let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
-let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, starGroupFar, scoreText, shieldStatusText, footerLogo;
+let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, starGroup, starGroupFar, scoreText, shieldStatusText, footerLogo;
 
 const config = { 
     type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000', 
@@ -80,8 +80,8 @@ function preload() {
     this.load.audio('bgm', 'background_track.mp3');
     
     let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2); s.generateTexture('star', 4, 4);
-    let v = this.make.graphics(); v.fillStyle(0xffffff, 1); v.fillCircle(8, 8, 8); v.generateTexture('vapor', 16, 16);
-    let t = this.make.graphics(); t.fillStyle(0xffcc00, 1); t.fillCircle(2, 2, 2); t.generateTexture('terp', 4, 4);
+    let v = this.make.graphics(); v.fillStyle(0xffffff, 1); v.fillCircle(8, 8, 8); v.generateTexture('vapor_puff', 16, 16);
+    let t = this.make.graphics(); t.fillStyle(0xffcc00, 1); t.fillCircle(2, 2, 2); t.generateTexture('terp_bit', 4, 4);
 }
 
 function create() {
@@ -99,8 +99,22 @@ function create() {
 
     footerLogo = this.add.image(380, 580, 'summa_logo').setScale(0.12).setAlpha(0.5).setDepth(1).setOrigin(1,1);
 
-    vaporTrail = this.add.particles(0, 0, 'vapor', { scale: { start: 0.3, end: 1.2 }, alpha: { start: 0.4, end: 0 }, lifespan: 800, speedX: { min: -100, max: -150 }, frequency: -1 }).setDepth(5);
-    terpSparkle = this.add.particles(0, 0, 'terp', { scale: { start: 1, end: 0 }, alpha: { start: 1, end: 0 }, lifespan: 600, speed: { min: 40, max: 100 }, frequency: -1 }).setDepth(6);
+    vaporTrail = this.add.particles(0, 0, 'vapor_puff', {
+        scale: { start: 0.4, end: 1.5 },
+        alpha: { start: 0.6, end: 0 },
+        lifespan: 1000,
+        speedX: { min: -150, max: -200 },
+        frequency: 50,
+        emitting: false
+    }).setDepth(5);
+
+    terpSparkle = this.add.particles(0, 0, 'terp_bit', {
+        scale: { start: 1.2, end: 0 },
+        alpha: { start: 1, end: 0 },
+        lifespan: 800,
+        speed: { min: 50, max: 150 },
+        emitting: false
+    }).setDepth(15);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(45, 290, 95); 
@@ -116,6 +130,7 @@ function create() {
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
 
     this.physics.add.overlap(player, shieldLogos, (p, logo) => {
+        terpSparkle.emitParticleAt(logo.x, logo.y, 20); 
         logo.destroy(); hasShield = true; playSfx('shield');
         this.cameras.main.flash(200, 255, 204, 0);
     }, null, this);
@@ -131,7 +146,6 @@ function create() {
         player.setVelocityY(-410); playSfx('jump');
         player.setTexture('nug_active'); 
         
-        // NAME SHAKE EFFECT
         this.tweens.add({
             targets: scoreText,
             x: 30 + (Math.random() * 6 - 3),
@@ -141,7 +155,7 @@ function create() {
             onComplete: () => { scoreText.setPosition(30, 30); }
         });
 
-        terpSparkle.emitParticleAt(player.x, player.y, 5); 
+        terpSparkle.emitParticleAt(player.x - 10, player.y, 5); 
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
@@ -151,6 +165,7 @@ function create() {
         playerName = document.getElementById('player-name').value || "PILOT"; 
         localStorage.setItem('hoppyNugName', playerName);
         isStarted = true; player.body.allowGravity = true; 
+        vaporTrail.start(); 
         if (!isMuted) bgMusic.play();
         this.time.addEvent({ delay: 2200, callback: spawnLevel, callbackScope: this, loop: true }); 
         clearInterval(idleTimer);
@@ -161,7 +176,11 @@ function create() {
 
 function startIdleCycle() {
     idleTimer = setInterval(() => {
-        if (!isStarted) {
+        // FIX: Check if the player is currently typing in the name box
+        const nameInput = document.getElementById('player-name');
+        const isTyping = document.activeElement === nameInput;
+
+        if (!isStarted && !isTyping) {
             const startMenu = document.getElementById('start-menu');
             if (startMenu.style.display === 'block') showMenu('leaderboard-screen');
             else showMenu('start-menu');
@@ -182,7 +201,8 @@ function update() {
 
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
     if (player.y > 600 || player.y < 0) gameOver.call(this);
-    if (this.time.now % 40 < 20) vaporTrail.emitParticleAt(player.x - 20, player.y + 5);
+
+    vaporTrail.emitParticleAt(player.x - 25, player.y + 5);
 
     bongs.getChildren().forEach(bong => {
         if (bong.x < player.x && !bong.scored) { 
@@ -243,6 +263,7 @@ function handleCollision(player, obstacle) {
 
 function gameOver() { 
     if (!isStarted) return; isStarted = false; playSfx('crash'); this.physics.pause(); 
+    vaporTrail.stop(); 
     let final = Math.floor(score);
     if (final > highScore) localStorage.setItem('hoppyNugBest', final);
     if (final > champScore) {
@@ -270,7 +291,7 @@ function playSfx(type) {
 function updateUI() {
     document.getElementById('session-record').innerText = `TENT RECORD: ${champScore}`;
     document.getElementById('best-display').innerText = "PERSONAL BEST: " + highScore;
-    document.getElementById('champ-name').innerText = champName.toUpperCase();
+    document.getElementById('champ-name').innerText = (champName || "TENT PILOT").toUpperCase();
     document.getElementById('champ-score').innerText = champScore;
 }
 
