@@ -18,8 +18,7 @@
         }
 
         .menu { 
-            pointer-events: auto; 
-            background: rgba(10, 5, 0, 0.75); 
+            pointer-events: auto; background: rgba(10, 5, 0, 0.75); 
             border: 3px solid #ffcc00; border-radius: 20px; padding: 40px; 
             color: white; text-align: center; text-transform: uppercase; width: 300px; display: none;
             position: absolute; animation: goldPulse 3s infinite ease-in-out;
@@ -41,14 +40,12 @@
     <div id="mute-btn">🔊</div>
     <div id="ui-layer">
         <div id="session-record">TENT RECORD: 0</div>
-        
         <div id="start-menu" class="menu" style="display: block;">
             <h1 class="glow-text" style="margin:0; font-size: 40px;">HOPPYNUG</h1>
             <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
             <p id="best-display" style="color: #888; font-size: 14px;">PERSONAL BEST: 0</p>
             <button id="start-btn">LIGHT UP</button>
         </div>
-
         <div id="leaderboard-screen" class="menu">
             <h2 style="color: #ffffff; margin:0;">CHAMPION STASH</h2>
             <hr style="border: 1px solid #444; margin: 20px 0;">
@@ -56,7 +53,6 @@
             <h2 id="champ-score" class="glow-text" style="font-size: 40px;">0</h2>
             <p style="font-size: 10px; color: #ffcc00;">TAP TO CHALLENGE</p>
         </div>
-
         <div id="game-over" class="menu">
             <h1 style="color: #ffffff; margin:0;">CASHED OUT!</h1>
             <p id="final-score-text" style="font-size: 28px; color: #ffcc00;">SCORE: 0</p>
@@ -105,7 +101,6 @@ function resetIdleTimer() {
         }
     }, 10000); 
 }
-
 window.addEventListener('mousedown', resetIdleTimer);
 window.addEventListener('touchstart', resetIdleTimer);
 
@@ -181,6 +176,7 @@ function create() {
         if (!isStarted) return; 
         player.setVelocityY(-410); playSfx('jump');
         player.setTexture('nug_active'); 
+        terpSparkle.emitParticleAt(player.x, player.y, 5); 
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
@@ -190,12 +186,10 @@ function create() {
     
     document.getElementById('start-btn').onclick = (e) => { e.stopPropagation(); startGame.call(this); };
     document.getElementById('retry-btn').onclick = (e) => { e.stopPropagation(); window.location.reload(); };
-    resetIdleTimer();
 }
 
 function update() {
     starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if (s.x < -20) s.destroy(); });
-
     if (glitchLayer && glitchLayer.visible) {
         glitchLayer.getChildren().forEach(logo => {
             logo.setAlpha(Math.random() > 0.88 ? Phaser.Math.FloatBetween(0.15, 0.45) : 0.15);
@@ -208,7 +202,6 @@ function update() {
     if (this.time.now % 60 < 20) vaporTrail.emitParticleAt(player.x - 25, player.y + 5);
 
     bongs.getChildren().forEach(bong => {
-        // Bong Smoke Logic
         if (bong.x > 0 && bong.x < 420 && this.time.now % 120 < 20) {
             if (bong.flipY) vaporDown.emitParticleAt(bong.x, bong.y + 10); else vaporUp.emitParticleAt(bong.x, bong.y - 10);
         }
@@ -216,7 +209,8 @@ function update() {
             score += 0.5; 
             if(Math.floor(score) > Math.floor(score - 0.5)) {
                 scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); 
-                playSfx('score'); terpSparkle.emitParticleAt(player.x, player.y, 10);
+                playSfx('score'); 
+                terpSparkle.emitParticleAt(player.x, player.y, 15);
             }
             bong.scored = true; 
         }
@@ -247,11 +241,17 @@ function spawnLevel() {
     const bot = bongs.create(550, y + 140, 'bong').setOrigin(0.5, 0);
     top.body.allowGravity = false; bot.body.allowGravity = false;
     top.setVelocityX(-210); bot.setVelocityX(-210);
+    
+    // RESTORED ORIGINAL HITBOXES FROM SCREENSHOTS
+    top.body.setSize(bong.width, bong.height);
+    bot.body.setSize(bong.width, bong.height);
 
     if (Math.random() > 0.5) {
         let ly = Phaser.Math.Between(100, 500);
         let l = lighters.create(650, ly, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180); l.startY = ly;
+        // RESTORED ORIGINAL LIGHTER HITBOX
+        l.body.setSize(lighter.width, lighter.height);
         flames.create(l.x - 45, ly, 'flame').setScale(0.08);
     }
 
@@ -277,7 +277,6 @@ function gameOver() {
     if (!isStarted) return; isStarted = false; playSfx('crash'); this.physics.pause(); 
     let final = Math.floor(score);
     if (final > champScore) {
-        this.cameras.main.flash(500, 255, 255, 255);
         localStorage.setItem('hoppyNugChampScore', final);
         localStorage.setItem('hoppyNugChampName', playerName);
         champScore = final; champName = playerName;
