@@ -62,7 +62,7 @@ let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle,
 
 const config = { 
     type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000', 
-    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: false } },
+    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: true } },
     scene: { preload, create, update } 
 };
 const game = new Phaser.Game(config);
