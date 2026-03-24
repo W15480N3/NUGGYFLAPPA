@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>HoppyNug - ORIGINAL LUXE</title>
+    <title>HoppyNug - SUMMA LUXE</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 999999; }
-        .menu { pointer-events: auto; background: rgba(10, 5, 0, 0.98); border: 4px solid #ffcc00; border-radius: 20px; padding: 40px; color: white; text-align: center; width: 300px; display: none; position: absolute; box-shadow: 0 0 50px #ffcc00; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 2000; }
+        .menu { pointer-events: auto; background: rgba(10, 5, 0, 0.98); border: 4px solid #ffcc00; border-radius: 20px; padding: 40px; color: white; text-align: center; width: 300px; display: none; position: absolute; box-shadow: 0 0 50px #ffcc00; z-index: 3000; }
         button { background: #ffcc00; color: #000; border: none; padding: 18px; font-size: 24px; font-weight: 900; border-radius: 12px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; margin-top: 20px; }
-        #session-record { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 101; font-size: 24px; pointer-events: none; }
+        #session-record { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 2500; font-size: 24px; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -54,19 +54,14 @@ function preload() {
     
     let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2); s.generateTexture('star', 4, 4);
     let v = this.make.graphics(); v.fillStyle(0xffffff, 1); v.fillCircle(8, 8, 8); v.generateTexture('vapor_puff', 16, 16);
-    let t = this.make.graphics(); t.fillStyle(0xffcc00, 1); t.fillCircle(2, 2, 2); t.generateTexture('terp_bit', 4, 4);
 }
 
 function create() {
-    // FORCE FULLSCREEN ON FIRST TAP
-    this.input.once('pointerdown', () => {
-        if (!this.scale.isFullscreen) this.scale.startFullscreen();
-    });
+    this.input.once('pointerdown', () => { if (!this.scale.isFullscreen) this.scale.startFullscreen(); });
 
     starGroupFar = this.add.group();
     starGroup = this.add.group();
 
-    // Star Spawn Timers (Restored Parallax)
     this.time.addEvent({ delay: 200, callback: () => {
         let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.2).setScale(0.5);
         star.setData('speed', 1); starGroupFar.add(star);
@@ -83,7 +78,6 @@ function create() {
 
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
 
-    // Restored Original Particle Configs
     vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.4, end: 1.5 }, alpha: { start: 0.6, end: 0 }, lifespan: 1000, speedX: { min: -150, max: -200 }, emitting: false }).setDepth(5);
     vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: -50, max: -100 }, frequency: -1 }).setDepth(4);
     vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: 50, max: 100 }, frequency: -1 }).setDepth(4);
@@ -132,19 +126,16 @@ function spawnLevel() {
         b.body.setSize(80, 380).setOffset(320, 0);
     });
 
-    // RESTORED: Sinusoidal Lighter Movement & Tip Flame
     if (Math.random() > 0.7) {
         let lY = Phaser.Math.Between(100, 500);
         let l = lighters.create(650, lY, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180);
         l.setData('startY', lY); l.setData('time', 0);
         l.body.setCircle(360).setOffset(180, 90);
-        
         let f = this.add.image(l.x, lY, 'flame').setScale(0.08).setDepth(11);
         flames.add(f);
     }
 
-    // RESTORED: Sinusoidal Shield Movement
     if (Math.random() > 0.85 && !hasShield) {
         let sY = Phaser.Math.Between(150, 450);
         let s = shields.create(600, sY, 'summa_logo').setScale(0.1).setTint(0xffcc00);
@@ -154,17 +145,15 @@ function spawnLevel() {
 }
 
 function update(time, delta) {
-    // Parallax Star Movement
     starGroupFar.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -50) s.destroy(); });
     starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -50) s.destroy(); });
 
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
-    if (player.y > 600 || player.y < 0) { gameOver.call(this); return; }
+    if (player.y > 600 || player.y < 0) { handleHit.call(this, null); return; }
 
     vaporTrail.emitParticleAt(player.x - 20, player.y);
 
     bongs.getChildren().forEach(b => {
-        // FIXED: Smoke only emits when bong is on screen
         if (b.x > -50 && b.x < 450 && this.time.now % 100 < 25) {
             if (b.flipY) vaporDown.emitParticleAt(b.x, b.y + 10);
             else vaporUp.emitParticleAt(b.x, b.y - 10);
@@ -173,26 +162,27 @@ function update(time, delta) {
             score += 0.5; if(Math.floor(score) > Math.floor(score - 0.5)) scoreText.setText("NUG: " + Math.floor(score));
             b.scored = true; 
         }
-        if (b.x < -100) b.destroy(); // CLEANUP
+        if (b.x < -100) b.destroy();
     });
 
-    // RESTORED: Lighter Sine Wave & Flame Flickering
     lighters.getChildren().forEach((l, i) => {
-        let t = l.getData('time') + 0.05; l.setData('time', t);
+        // SLOWED DOWN: 0.02 instead of 0.05
+        let t = l.getData('time') + 0.02; l.setData('time', t);
         l.y = l.getData('startY') + Math.sin(t) * 30;
         l.angle += 2;
         
         let f = flames.getChildren()[i];
         if (f) {
             f.x = l.x; f.y = l.y; f.angle = l.angle;
-            f.setAlpha(0.7 + Math.random() * 0.3); // Flickering
-            f.setScale(0.07 + Math.random() * 0.02); // Flickering
+            f.setAlpha(Phaser.Math.FloatBetween(0.4, 1.0)); // BETTER FLICKER
+            f.setScale(Phaser.Math.FloatBetween(0.07, 0.09)); // BETTER FLICKER
         }
         if (l.x < -100) { l.destroy(); if(f) f.destroy(); }
     });
 
     shields.getChildren().forEach(s => {
-        let t = s.getData('time') + 0.05; s.setData('time', t);
+        // SLOWED DOWN: 0.02 instead of 0.05
+        let t = s.getData('time') + 0.02; s.setData('time', t);
         s.y = s.getData('startY') + Math.sin(t) * 50;
         if (s.x < -100) s.destroy();
     });
@@ -202,18 +192,29 @@ function update(time, delta) {
 }
 
 function handleHit(obj) {
-    player.setTint(0xff0000);
-    if (hasShield) { hasShield = false; obj.destroy(); this.cameras.main.shake(200, 0.02); }
-    else { gameOver.call(this); }
+    if (hasShield && obj) { 
+        hasShield = false; player.setTint(0xff0000); obj.destroy(); this.cameras.main.shake(200, 0.02);
+        this.time.delayedCall(200, () => { if(isStarted) player.setTint(0xffcc00); });
+        return;
+    }
+    gameOver.call(this);
 }
 
 function gameOver() { 
     if (!isStarted) return; isStarted = false;
+    player.setTint(0xff0000);
     this.physics.pause();
-    document.getElementById('game-over').style.display = 'block';
-    document.getElementById('final-score-text').innerText = Math.floor(score);
-    if (Math.floor(score) > champScore) { champScore = Math.floor(score); localStorage.setItem('hoppyNugChampScore', champScore); }
-    updateUI();
+    vaporTrail.stop();
+    
+    let final = Math.floor(score);
+    if (final > champScore) { champScore = final; localStorage.setItem('hoppyNugChampScore', final); }
+    
+    // DELAYED UI POP TO ENSURE IT OVERLAYS FULLSCREEN
+    setTimeout(() => {
+        document.getElementById('game-over').style.display = 'block';
+        document.getElementById('final-score-text').innerText = final;
+        updateUI();
+    }, 100);
 }
 
 function updateUI() { document.getElementById('session-record').innerText = `TENT RECORD: ${champScore}`; }
