@@ -97,7 +97,6 @@ function create() {
 
     this.add.image(380, 580, 'summa_logo').setScale(0.12).setAlpha(0.5).setDepth(1).setOrigin(1,1);
 
-    // RESTORED VAPOR AND SPARKLES
     vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.4, end: 1.5 }, alpha: { start: 0.6, end: 0 }, lifespan: 1000, speedX: { min: -150, max: -200 }, emitting: false }).setDepth(5);
     vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: -50, max: -100 }, frequency: -1 }).setDepth(4);
     vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: 50, max: 100 }, frequency: -1 }).setDepth(4);
@@ -113,7 +112,7 @@ function create() {
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
 
     this.physics.add.overlap(player, shieldLogos, (p, logo) => {
-        terpSparkle.emitParticleAt(logo.x, logo.y, 20); // RESTORED SPARKLES ON PICKUP
+        terpSparkle.emitParticleAt(logo.x, logo.y, 20); 
         logo.destroy(); hasShield = true; playSfx('shield');
         this.cameras.main.flash(200, 255, 204, 0);
     }, null, this);
@@ -125,7 +124,7 @@ function create() {
         if (!isStarted) return; 
         player.setVelocityY(-410); playSfx('jump');
         player.setTexture('nug_active'); 
-        terpSparkle.emitParticleAt(player.x - 10, player.y, 5); // RESTORED SPARKLES ON JUMP
+        terpSparkle.emitParticleAt(player.x - 10, player.y, 5);
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
@@ -151,13 +150,16 @@ function spawnLevel() {
         let l = lighters.create(650, ly, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180); l.startY = ly;
         l.body.setCircle(360).setOffset(180, 90); 
-        flames.create(l.x, ly, 'flame').setScale(0.08);
+        
+        // Link the flame to the lighter so we can find it later
+        let f = flames.create(l.x, ly, 'flame').setScale(0.08);
+        l.setData('myFlame', f);
     }
     if (Math.random() > 0.7) {
         let sy = Phaser.Math.Between(100, 500);
         let pwr = shieldLogos.create(750, sy, 'summa_logo').setScale(0.12);
         pwr.body.allowGravity = false; pwr.setVelocityX(-210); pwr.startY = sy;
-        pwr.body.setCircle(180).setOffset(350, 60); // Hitbox shifted right
+        pwr.body.setCircle(180).setOffset(350, 60);
     }
 }
 
@@ -171,7 +173,6 @@ function update() {
     vaporTrail.emitParticleAt(player.x - 25, player.y + 5);
 
     bongs.getChildren().forEach(bong => {
-        // RESTORED BONG SMOKE
         if (bong.x > 0 && bong.x < 420 && this.time.now % 100 < 30) {
             if (bong.flipY) vaporDown.emitParticleAt(bong.x, bong.y + 15); 
             else vaporUp.emitParticleAt(bong.x, bong.y - 15);
@@ -182,27 +183,35 @@ function update() {
         }
     });
 
-    lighters.getChildren().forEach((l, i) => { 
-        let f = flames.getChildren()[i]; 
+    lighters.getChildren().forEach((l) => { 
+        let f = l.getData('myFlame'); 
         l.angle += 3.5; l.y = l.startY + Math.sin(this.time.now / 300) * 40; 
-        if (f) { 
+        if (f && f.active) { 
             let rad = Phaser.Math.DegToRad(l.angle + 180); 
-            // FLAME OFFSET TO THE LEFT (MULTIPLIER INCREASED TO 55) AND FLICKER
             f.x = l.x + Math.cos(rad) * 55; f.y = l.y + Math.sin(rad) * 55; f.angle = l.angle; 
-            f.setScale(0.07 + Math.random() * 0.03);
-            f.setAlpha(0.6 + Math.random() * 0.4);
+            f.setScale(0.07 + Math.random() * 0.03); // FLICKER
+            f.setAlpha(0.6 + Math.random() * 0.4); // FLICKER
         }
+        if (l.x < -100) { if(f) f.destroy(); l.destroy(); }
     });
 
     shieldLogos.getChildren().forEach(logo => { logo.y = logo.startY + Math.sin(this.time.now / 400) * 30; });
 
-    // RESTORED SHIELD VISUAL STATE
     if (hasShield) { player.setTint(0xffcc00); shieldStatusText.setText("🛡️ SUMMA SHIELD ACTIVE"); }
     else { player.clearTint(); shieldStatusText.setText(""); }
 }
 
 function handleCollision(player, obstacle) {
-    if (hasShield) { hasShield = false; obstacle.destroy(); this.cameras.main.shake(300, 0.02); playSfx('crash'); } 
+    if (hasShield) { 
+        hasShield = false; 
+        // IF IT'S A LIGHTER, KILL ITS SPECIFIC FLAME TOO
+        let f = obstacle.getData('myFlame');
+        if (f) f.destroy();
+        
+        obstacle.destroy(); 
+        this.cameras.main.shake(300, 0.02); 
+        playSfx('crash'); 
+    } 
     else { gameOver.call(this); }
 }
 
