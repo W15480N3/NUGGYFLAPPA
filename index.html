@@ -9,73 +9,37 @@
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
-        
-        #ui-layer { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            display: flex; justify-content: center; align-items: center; 
-            pointer-events: none; z-index: 99999; 
-        }
-
-        @keyframes goldPulse {
-            0% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); border-color: #ffcc00; }
-            50% { box-shadow: 0 0 60px rgba(255, 204, 0, 0.8); border-color: #ffffff; }
-            100% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); border-color: #ffcc00; }
-        }
-
-        .menu { 
-            pointer-events: auto; background: rgba(10, 5, 0, 0.95); 
-            border: 3px solid #ffcc00; border-radius: 20px; padding: 40px; 
-            color: white; text-align: center; text-transform: uppercase; width: 300px; 
-            display: none; position: absolute; animation: goldPulse 3s infinite ease-in-out;
-        }
-
-        button { background: #ffcc00; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 99999; }
+        .menu { pointer-events: auto; background: rgba(10, 5, 0, 0.95); border: 3px solid #ffcc00; border-radius: 20px; padding: 40px; color: white; text-align: center; text-transform: uppercase; width: 300px; display: none; position: absolute; z-index: 100000; }
+        button { background: #ffcc00; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; margin-top: 10px; }
         input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
         .glow-text { color: #ffcc00; text-shadow: 0 0 20px #ffcc00; }
         #session-record { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 101; font-size: 22px; pointer-events: none; white-space: nowrap; }
-        #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #ffcc00; font-size: 24px; cursor: pointer; z-index: 7000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #ffcc00; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
-    <div id="mute-btn">🔊</div>
     <div id="ui-layer">
         <div id="session-record">TENT RECORD: 0</div>
-        
         <div id="start-menu" class="menu" style="display: block;">
-            <h1 class="glow-text" style="margin:0; font-size: 40px;">HOPPYNUG</h1>
+            <h1 class="glow-text">HOPPYNUG</h1>
             <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
-            <p id="best-display" style="color: #888; font-size: 14px;">PERSONAL BEST: 0</p>
             <button id="start-btn">LIGHT UP</button>
         </div>
-
-        <div id="leaderboard-screen" class="menu">
-            <h2 style="color: #ffffff; margin:0;">CHAMPION STASH</h2>
-            <hr style="border: 1px solid #444; margin: 20px 0;">
-            <h1 id="champ-name" style="color: #ffffff; text-shadow: 0 0 20px #ffcc00;">NONE</h1>
-            <h2 id="champ-score" class="glow-text" style="font-size: 45px;">0</h2>
-            <p style="font-size: 12px; color: #ffcc00;">TAP ANYWHERE TO CHALLENGE</p>
-        </div>
-
         <div id="game-over" class="menu">
-            <h1 style="color: #ffffff; margin:0;">CASHED OUT!</h1>
+            <h1 style="color: #ffffff;">CASHED OUT!</h1>
             <p id="final-score-text" style="font-size: 28px; color: #ffcc00;">SCORE: 0</p>
             <button id="retry-btn">RE-UP</button>
         </div>
     </div>
 
 <script>
-let isMuted = false, score = 0, isStarted = false, hasShield = false, idleTimer;
+let isMuted = false, score = 0, isStarted = false, hasShield = false;
 let playerName = localStorage.getItem('hoppyNugName') || "";
-let highScore = parseInt(localStorage.getItem('hoppyNugBest')) || 0;
-let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
-let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, starGroupFar, scoreText, shieldStatusText, footerLogo;
+let bgMusic, audioCtx, player, bongs, lighters, flames, shields, vaporTrail, terpSparkle, vaporUp, vaporDown, scoreText, shieldStatusText;
 
 const config = {
-    type: Phaser.AUTO,
-    width: 400,
-    height: 600,
-    backgroundColor: '#000',
+    type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000',
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: false } },
     scene: { preload, create, update }
@@ -90,159 +54,66 @@ function preload() {
     this.load.image('flame', 'flame.png');
     this.load.image('summa_logo', 'summa.png'); 
     this.load.audio('bgm', 'background_track.mp3');
-    
-    let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2); s.generateTexture('star', 4, 4);
-    let v = this.make.graphics(); v.fillStyle(0xffffff, 1); v.fillCircle(8, 8, 8); v.generateTexture('vapor_puff', 16, 16);
-    let t = this.make.graphics(); t.fillStyle(0xffcc00, 1); t.fillCircle(2, 2, 2); t.generateTexture('terp_bit', 4, 4);
+    this.make.graphics().fillStyle(0xffffff).fillCircle(2, 2, 2).generateTexture('star', 4, 4);
+    this.make.graphics().fillStyle(0xffffff).fillCircle(8, 8, 8).generateTexture('vapor_puff', 16, 16);
+    this.make.graphics().fillStyle(0xffcc00).fillCircle(2, 2, 2).generateTexture('terp_bit', 4, 4);
 }
 
 function create() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    // Background Stars
-    starGroupFar = this.add.group(); 
-    starGroup = this.add.group();
-    this.time.addEvent({ delay: 200, callback: () => {
-        let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.2).setScale(0.5);
-        star.setData('speed', 1); starGroupFar.add(star);
-    }, loop: true });
-    this.time.addEvent({ delay: 400, callback: () => {
-        let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.6);
-        star.setData('speed', 3); starGroup.add(star);
-    }, loop: true });
-
-    footerLogo = this.add.image(380, 580, 'summa_logo').setScale(0.12).setAlpha(0.5).setDepth(1).setOrigin(1,1);
-
-    // Particles
-    vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.4, end: 1.5 }, alpha: { start: 0.6, end: 0 }, lifespan: 1000, speedX: { min: -150, max: -200 }, emitting: false }).setDepth(5);
-    vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: -50, max: -100 }, frequency: -1 }).setDepth(4);
-    vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: 50, max: 100 }, frequency: -1 }).setDepth(4);
-    terpSparkle = this.add.particles(0, 0, 'terp_bit', { scale: { start: 1.2, end: 0 }, alpha: { start: 1, end: 0 }, lifespan: 800, speed: { min: 50, max: 150 }, emitting: false }).setDepth(15);
-
-    // Player Setup
-    player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
-    player.body.setCircle(45, 290, 95); 
-    player.body.allowGravity = false;
-
-    // Groups
-    bongs = this.physics.add.group(); 
-    lighters = this.physics.add.group(); 
-    shieldLogos = this.physics.add.group(); 
-    flames = this.add.group();
+    for(let i=0; i<20; i++) { this.add.image(Phaser.Math.Between(0, 400), Phaser.Math.Between(0, 600), 'star').setAlpha(0.3); }
+    this.add.image(380, 580, 'summa_logo').setScale(0.12).setAlpha(0.5).setDepth(1).setOrigin(1,1);
 
     scoreText = this.add.text(30, 30, '', { fontSize: '22px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
     shieldStatusText = this.add.text(30, 60, '', { fontSize: '14px', fill: '#ffffff', fontFamily: 'Orbitron' }).setDepth(100);
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
 
-    // Collisions
-    this.physics.add.overlap(player, shieldLogos, (p, logo) => {
-        terpSparkle.emitParticleAt(logo.x, logo.y, 20); 
-        logo.destroy(); hasShield = true; playSfx('shield');
-        this.cameras.main.flash(200, 255, 204, 0);
-    }, null, this);
-    this.physics.add.overlap(player, bongs, handleCollision, null, this);
-    this.physics.add.overlap(player, lighters, handleCollision, null, this);
+    vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.4, end: 1.2 }, alpha: { start: 0.5, end: 0 }, lifespan: 800, speedX: -150, emitting: false }).setDepth(5);
+    vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 1.5 }, alpha: { start: 0.4, end: 0 }, lifespan: 1000, speedY: -80, frequency: -1 }).setDepth(4);
+    vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 1.5 }, alpha: { start: 0.4, end: 0 }, lifespan: 1000, speedY: 80, frequency: -1 }).setDepth(4);
+    terpSparkle = this.add.particles(0, 0, 'terp_bit', { scale: { start: 1, end: 0 }, alpha: { start: 1, end: 0 }, lifespan: 600, speed: 100, emitting: false }).setDepth(15);
 
-    // Input
+    player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
+    player.body.setCircle(45, 290, 95); // YOUR ORIGINAL HITBOX
+    player.body.allowGravity = false;
+
+    bongs = this.physics.add.group(); 
+    lighters = this.physics.add.group(); 
+    shields = this.physics.add.group();
+    flames = this.add.group();
+
+    this.physics.add.overlap(player, bongs, (p, b) => { handleHit.call(this, b); }, null, this);
+    this.physics.add.overlap(player, lighters, (p, l) => { handleHit.call(this, l); }, null, this);
+    this.physics.add.overlap(player, shields, (p, s) => {
+        s.destroy(); hasShield = true; terpSparkle.emitParticleAt(p.x, p.y, 15);
+    }, null, this);
+
     this.input.on('pointerdown', () => { 
-        if (!isStarted) {
-            if(document.getElementById('leaderboard-screen').style.display === 'block') showMenu('start-menu');
-            return;
-        } 
-        player.setVelocityY(-410); playSfx('jump');
+        if (!isStarted) return;
+        player.setVelocityY(-410);
         player.setTexture('nug_active'); 
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
-    // Start Button Fix
     document.getElementById('start-btn').onclick = (e) => {
-        e.stopPropagation();
-        // FORCE FULLSCREEN ON REAL CLICK
-        if (!this.scale.isFullscreen) { this.scale.startFullscreen(); }
+        if (!this.scale.isFullscreen) this.scale.startFullscreen();
         startGame.call(this);
     };
 
-    // Retry Button Fix
-    document.getElementById('retry-btn').onclick = (e) => {
-        e.stopPropagation();
-        resetGame();
-    };
-
+    document.getElementById('retry-btn').onclick = () => { location.reload(); };
     updateUI();
-    startIdleCycle();
 }
 
 function startGame() {
-    showMenu(null);
-    playerName = document.getElementById('player-name').value || "PILOT"; 
-    localStorage.setItem('hoppyNugName', playerName);
-    isStarted = true; 
-    player.body.allowGravity = true; 
-    player.setVelocityY(0); // Reset any rocket velocity
-    vaporTrail.start(); 
-    if (!isMuted && !bgMusic.isPlaying) bgMusic.play();
-    
-    if (this.spawnTimer) this.spawnTimer.remove();
-    this.spawnTimer = this.time.addEvent({ delay: 2200, callback: spawnLevel, callbackScope: this, loop: true }); 
-    clearInterval(idleTimer);
-}
-
-function resetGame() {
-    showMenu('start-menu'); // Go back to start to reset player state
-    score = 0;
-    hasShield = false;
-    isStarted = false;
-    game.sound.stopAll();
-    game.scene.scenes[0].scene.restart();
-}
-
-function startIdleCycle() {
-    if (idleTimer) clearInterval(idleTimer);
-    idleTimer = setInterval(() => {
-        const nameInput = document.getElementById('player-name');
-        if (!isStarted && document.activeElement !== nameInput) {
-            const current = document.getElementById('start-menu').style.display === 'block' ? 'leaderboard-screen' : 'start-menu';
-            showMenu(current);
-        }
-    }, 5000);
-}
-
-function showMenu(id) {
     document.getElementById('start-menu').style.display = 'none';
-    document.getElementById('leaderboard-screen').style.display = 'none';
-    document.getElementById('game-over').style.display = 'none';
-    if(id) document.getElementById(id).style.display = 'block';
-}
-
-function update() {
-    starGroupFar.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -20) s.destroy(); });
-    starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -20) s.destroy(); });
-
-    if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
-    if (player.y > 600 || player.y < 0) gameOver.call(this);
-
-    vaporTrail.emitParticleAt(player.x - 25, player.y + 5);
-
-    bongs.getChildren().forEach(bong => {
-        if (bong.x < player.x && !bong.scored) { 
-            score += 0.5; 
-            if(Math.floor(score) > Math.floor(score - 0.5)) {
-                scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); 
-                playSfx('score');
-            }
-            bong.scored = true; 
-        }
-    });
-
-    lighters.getChildren().forEach((l, i) => { 
-        let f = flames.getChildren()[i]; l.angle += 3.5; l.y = l.startY + Math.sin(this.time.now / 300) * 40; 
-        if (f) { let rad = Phaser.Math.DegToRad(l.angle + 180); f.x = l.x + Math.cos(rad) * 45; f.y = l.y + Math.sin(rad) * 45; f.angle = l.angle; }
-    });
-
-    shieldLogos.getChildren().forEach(logo => { logo.y = logo.startY + Math.sin(this.time.now / 400) * 30; });
-
-    if (hasShield) { player.setTint(0xffcc00); shieldStatusText.setText("🛡️ SUMMA SHIELD ACTIVE"); }
-    else { player.clearTint(); shieldStatusText.setText(""); }
+    playerName = document.getElementById('player-name').value || "PILOT"; 
+    isStarted = true; score = 0; hasShield = false;
+    player.setPosition(100, 300);
+    player.body.allowGravity = true;
+    player.body.setVelocity(0, 0);
+    vaporTrail.start(); 
+    if (!bgMusic.isPlaying) bgMusic.play();
+    this.spawnTimer = this.time.addEvent({ delay: 2200, callback: spawnLevel, callbackScope: this, loop: true }); 
 }
 
 function spawnLevel() {
@@ -250,64 +121,86 @@ function spawnLevel() {
     const y = Phaser.Math.Between(150, 450);
     const top = bongs.create(550, y - 140, 'bong').setOrigin(0.5, 1).setFlipY(true);
     const bot = bongs.create(550, y + 140, 'bong').setOrigin(0.5, 0);
-    top.body.allowGravity = false; bot.body.allowGravity = false;
-    top.setVelocityX(-210); bot.setVelocityX(-210);
-    top.body.setSize(80, 380).setOffset(320, 0); bot.body.setSize(80, 380).setOffset(320, 0);
+    [top, bot].forEach(b => { 
+        b.body.allowGravity = false; b.setVelocityX(-210); 
+        b.body.setSize(80, 380).setOffset(320, 0); // YOUR ORIGINAL HITBOX
+    });
 
-    if (Math.random() > 0.6) {
-        let ly = Phaser.Math.Between(100, 500);
-        let l = lighters.create(650, ly, 'lighter').setScale(0.08);
-        l.body.allowGravity = false; l.setVelocityX(-180); l.startY = ly;
-        l.body.setCircle(360).setOffset(180, 90); 
-        flames.create(l.x - 45, ly, 'flame').setScale(0.08);
+    if (Math.random() > 0.7) {
+        let lY = Phaser.Math.Between(100, 500);
+        let l = lighters.create(650, lY, 'lighter').setScale(0.08);
+        l.body.allowGravity = false; l.setVelocityX(-180); l.startY = lY;
+        l.body.setCircle(360).setOffset(180, 90); // YOUR ORIGINAL HITBOX
+        flames.create(l.x, lY, 'flame').setScale(0.08);
+    }
+    if (Math.random() > 0.85 && !hasShield) {
+        let s = shields.create(600, Phaser.Math.Between(150, 450), 'summa_logo').setScale(0.1).setTint(0xffcc00);
+        s.body.allowGravity = false; s.setVelocityX(-210);
     }
 }
 
-function handleCollision(player, obstacle) {
-    if (hasShield) { hasShield = false; obstacle.destroy(); this.cameras.main.shake(300, 0.02); playSfx('crash'); } 
-    else { gameOver.call(this); }
+function update() {
+    if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
+    if (player.y > 600 || player.y < 0) { gameOver.call(this); return; }
+
+    vaporTrail.emitParticleAt(player.x - 20, player.y);
+
+    bongs.getChildren().forEach(b => {
+        if (this.time.now % 100 < 25) { 
+            if (b.flipY) vaporDown.emitParticleAt(b.x, b.y + 10);
+            else vaporUp.emitParticleAt(b.x, b.y - 10);
+        }
+        if (b.x < player.x && !b.scored) { 
+            score += 0.5; if(Math.floor(score) > Math.floor(score - 0.5)) { 
+                scoreText.setText(`${playerName.toUpperCase()}: ${Math.floor(score)}`); 
+            }
+            b.scored = true; 
+        }
+    });
+
+    lighters.getChildren().forEach((l, i) => {
+        let f = flames.getChildren()[i]; l.angle += 3;
+        if (f) { f.x = l.x; f.y = l.y; f.angle = l.angle; }
+    });
+
+    // SHIELD COLOR HANDLING
+    if (hasShield && isStarted) { 
+        player.setTint(0xffcc00); 
+        shieldStatusText.setText("🛡️ SUMMA SHIELD ACTIVE"); 
+    } else if (isStarted) { 
+        player.clearTint(); 
+        shieldStatusText.setText(""); 
+    }
+}
+
+function handleHit(obj) {
+    // FLASH RED ON HIT
+    player.setTint(0xff0000); 
+    this.cameras.main.shake(200, 0.02);
+
+    if (hasShield) { 
+        hasShield = false; 
+        obj.destroy(); 
+        // Briefly keep red before clearing back to normal
+        this.time.delayedCall(200, () => { if(isStarted) player.clearTint(); });
+    } else { 
+        gameOver.call(this); 
+    }
 }
 
 function gameOver() { 
-    if (!isStarted) return; isStarted = false; 
-    playSfx('crash'); this.physics.pause(); vaporTrail.stop(); 
+    if (!isStarted) return; isStarted = false;
+    player.setTint(0xff0000); // PERMANENT RED ON DEATH
+    this.physics.pause(); vaporTrail.stop();
     if (this.spawnTimer) this.spawnTimer.remove();
-    
     let final = Math.floor(score);
-    if (final > highScore) { highScore = final; localStorage.setItem('hoppyNugBest', final); }
-    if (final > champScore) { 
-        localStorage.setItem('hoppyNugChampScore', final); 
-        localStorage.setItem('hoppyNugChampName', playerName); 
-        champScore = final; champName = playerName; 
-    }
-    updateUI(); 
-    showMenu('game-over'); 
-    document.getElementById('final-score-text').innerText = "SCORE: " + final; 
+    if (final > champScore) { champScore = final; localStorage.setItem('hoppyNugChampScore', final); }
+    document.getElementById('game-over').style.display = 'block';
+    document.getElementById('final-score-text').innerText = "SCORE: " + final;
+    updateUI();
 }
 
-function playSfx(type) {
-    if (isMuted || !audioCtx) return;
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const now = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    if (type === 'jump') { osc.frequency.setValueAtTime(180, now); gain.gain.linearRampToValueAtTime(0, now + 0.15); osc.start(); osc.stop(now + 0.15); }
-    else if (type === 'score') { osc.frequency.setValueAtTime(800, now); gain.gain.linearRampToValueAtTime(0, now + 0.1); osc.start(); osc.stop(now + 0.1); }
-    else if (type === 'shield') { osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); gain.gain.linearRampToValueAtTime(0, now + 0.2); osc.start(); osc.stop(now + 0.2); }
-    else if (type === 'crash') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); gain.gain.linearRampToValueAtTime(0, now + 0.4); osc.start(); osc.stop(now + 0.4); }
-}
-
-function updateUI() {
-    document.getElementById('session-record').innerText = `TENT RECORD: ${champScore}`;
-    document.getElementById('best-display').innerText = "PERSONAL BEST: " + highScore;
-    document.getElementById('champ-name').innerText = (champName || "TENT PILOT").toUpperCase();
-    document.getElementById('champ-score').innerText = champScore;
-}
-
-document.getElementById('mute-btn').onclick = function() {
-    isMuted = !isMuted; this.innerText = isMuted ? "🔇" : "🔊";
-    if (bgMusic) { if (isMuted) bgMusic.pause(); else if (isStarted) bgMusic.resume(); }
-};
+function updateUI() { document.getElementById('session-record').innerText = `TENT RECORD: ${champScore}`; }
 </script>
 </body>
 </html>
