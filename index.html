@@ -8,50 +8,51 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
-        canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
-        
-        /* This overlay ensures the ID TAG is entered before the game starts */
-        #entry-layer { 
+        #game-container { position: relative; width: 400px; height: 600px; }
+        canvas { border: 2px solid #333; }
+        #ui-layer { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            background: #000; z-index: 10000; 
+            display: flex; justify-content: center; align-items: center; z-index: 10;
         }
         .menu-box { 
-            background: rgba(10, 5, 0, 0.98); border: 4px solid #ffcc00; 
-            border-radius: 20px; padding: 40px; text-align: center; width: 280px;
-            box-shadow: 0 0 50px #ffcc00;
+            background: rgba(10, 5, 0, 0.95); border: 4px solid #ffcc00; 
+            border-radius: 20px; padding: 30px; text-align: center; width: 260px;
+            box-shadow: 0 0 30px #ffcc00;
         }
-        #player-name { 
-            background: #111; border: 2px solid #ffcc00; color: #ffcc00; 
-            padding: 15px; font-size: 22px; border-radius: 10px; width: 80%; 
-            margin-bottom: 20px; outline: none; font-family: 'Orbitron', sans-serif; text-align: center;
+        input { 
+            background: #000; border: 2px solid #ffcc00; color: #ffcc00; 
+            padding: 12px; font-size: 18px; border-radius: 8px; width: 80%; 
+            margin: 15px 0; outline: none; font-family: 'Orbitron', sans-serif; text-align: center;
         }
         button { 
-            background: #ffcc00; color: #000; border: none; padding: 18px; 
-            font-size: 24px; font-weight: 900; border-radius: 12px; cursor: pointer; 
+            background: #ffcc00; color: #000; border: none; padding: 15px; 
+            font-size: 20px; font-weight: 900; border-radius: 10px; cursor: pointer; 
             width: 100%; font-family: 'Orbitron', sans-serif;
         }
     </style>
 </head>
 <body>
-    <div id="entry-layer">
-        <div class="menu-box">
-            <h1 style="color:#ffcc00; margin: 0 0 20px 0; font-size: 32px;">HOPPYNUG</h1>
-            <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
-            <button id="start-btn">LIGHT UP</button>
+    <div id="game-container">
+        <div id="ui-layer">
+            <div class="menu-box" id="start-menu">
+                <h1 style="color:#ffcc00; margin:0; font-size: 28px;">HOPPYNUG</h1>
+                <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
+                <button id="start-btn">LIGHT UP</button>
+            </div>
         </div>
     </div>
 
 <script>
 let score = 0, isStarted = false, hasShield = false, playerName = "NUGGY";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
-let bgMusic, hopSound, player, bongs, lighters, flames, shields, vaporTrail, vaporUp, vaporDown, scoreText, shieldStatusText, recordText;
-let starGroupFar, starGroup, gameOverGroup;
+let bgMusic, hopSound, player, bongs, lighters, flames, scoreText, recordText;
 
 const config = {
-    type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000',
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: false } },
+    type: Phaser.AUTO,
+    parent: 'game-container',
+    width: 400, height: 600,
+    backgroundColor: '#000',
+    physics: { default: 'arcade', arcade: { gravity: { y: 1200 } } },
     scene: { preload, create, update }
 };
 const game = new Phaser.Game(config);
@@ -65,151 +66,97 @@ function preload() {
     this.load.image('summa_logo', 'summa.png'); 
     this.load.audio('bgm', 'background_track.mp3');
     this.load.audio('hop', 'jump_sound.mp3');
-    
-    let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2); s.generateTexture('star', 4, 4);
-    let v = this.make.graphics(); v.fillStyle(0xffffff, 1); v.fillCircle(8, 8, 8); v.generateTexture('vapor_puff', 16, 16);
 }
 
 function create() {
-    starGroupFar = this.add.group();
-    starGroup = this.add.group();
-    
-    // Background Stars
-    this.time.addEvent({ delay: 200, callback: () => {
-        let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.2).setScale(0.5);
-        star.setData('speed', 1); starGroupFar.add(star);
-    }, loop: true });
-
-    this.time.addEvent({ delay: 400, callback: () => {
-        let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.6);
-        star.setData('speed', 3); starGroup.add(star);
-    }, loop: true });
-
     scoreText = this.add.text(20, 20, '', { fontSize: '24px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
-    shieldStatusText = this.add.text(20, 50, '', { fontSize: '14px', fill: '#ffffff', fontFamily: 'Orbitron' }).setDepth(100);
-    recordText = this.add.text(200, 570, 'TENT RECORD: ' + champScore, { fontSize: '18px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(100);
-    this.add.image(380, 580, 'summa_logo').setScale(0.1).setAlpha(0.5).setDepth(1).setOrigin(1,1);
+    recordText = this.add.text(200, 570, 'TENT RECORD: ' + champScore, { fontSize: '18px', fill: '#ffcc00', fontFamily: 'Orbitron' }).setOrigin(0.5).setDepth(100);
+    this.add.image(380, 580, 'summa_logo').setScale(0.1).setAlpha(0.4).setOrigin(1,1);
 
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
     hopSound = this.sound.add('hop', { volume: 0.3 });
 
-    vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.4, end: 1.5 }, alpha: { start: 0.6, end: 0 }, lifespan: 1000, speedX: { min: -150, max: -200 }, emitting: false }).setDepth(5);
-    vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: -50, max: -100 }, frequency: -1 }).setDepth(4);
-    vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: 50, max: 100 }, frequency: -1 }).setDepth(4);
-
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
-    player.body.setCircle(45, 290, 95); 
     player.body.allowGravity = false;
 
     bongs = this.physics.add.group(); 
     lighters = this.physics.add.group(); 
-    shields = this.physics.add.group();
     flames = this.add.group();
 
-    this.physics.add.overlap(player, bongs, (p, b) => handleHit.call(this, b), null, this);
-    this.physics.add.overlap(player, lighters, (p, l) => handleHit.call(this, l), null, this);
-    this.physics.add.overlap(player, shields, (p, s) => { s.destroy(); hasShield = true; }, null, this);
+    this.physics.add.overlap(player, bongs, () => gameOver.call(this));
+    this.physics.add.overlap(player, lighters, () => gameOver.call(this));
 
-    // INPUT HANDLER
     this.input.on('pointerdown', () => { 
         if (!isStarted) return;
         player.setVelocityY(-400);
-        if (this.sound.context.state === 'suspended') this.sound.context.resume();
         hopSound.play(); 
         player.setTexture('nug_active'); 
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
-    // BUTTON CLICK HANDLER
-    document.getElementById('start-btn').addEventListener('click', () => {
+    document.getElementById('start-btn').onclick = () => {
         let nameIn = document.getElementById('player-name').value;
         if(nameIn) playerName = nameIn.toUpperCase();
-        document.getElementById('entry-layer').style.display = 'none';
+        document.getElementById('ui-layer').style.display = 'none';
         
-        if (!this.scale.isFullscreen) this.scale.startFullscreen();
-        startGame.call(this);
-    });
-}
-
-function startGame() {
-    isStarted = true; score = 0; hasShield = false;
-    player.setPosition(100, 300);
-    player.body.allowGravity = true;
-    player.setTint(0xffffff);
-    scoreText.setText(playerName + ": 0");
-    vaporTrail.start(); 
-    if (!bgMusic.isPlaying) bgMusic.play();
-    this.spawnTimer = this.time.addEvent({ delay: 2200, callback: spawnLevel, callbackScope: this, loop: true }); 
+        // Fullscreen trigger
+        if (this.scale.canFullScreen) this.scale.startFullscreen();
+        
+        isStarted = true;
+        player.body.allowGravity = true;
+        scoreText.setText(playerName + ": 0");
+        bgMusic.play();
+        this.spawnTimer = this.time.addEvent({ delay: 2200, callback: spawnLevel, callbackScope: this, loop: true });
+    };
 }
 
 function spawnLevel() {
     if (!isStarted) return;
     const y = Phaser.Math.Between(150, 450);
-    const top = bongs.create(550, y - 140, 'bong').setOrigin(0.5, 1).setFlipY(true);
-    const bot = bongs.create(550, y + 140, 'bong').setOrigin(0.5, 0);
-    [top, bot].forEach(b => { b.body.allowGravity = false; b.setVelocityX(-210); b.body.setSize(80, 380).setOffset(320, 0); });
+    const top = bongs.create(500, y - 150, 'bong').setOrigin(0.5, 1).setFlipY(true);
+    const bot = bongs.create(500, y + 150, 'bong').setOrigin(0.5, 0);
+    [top, bot].forEach(b => { b.body.allowGravity = false; b.setVelocityX(-200); });
 
-    if (Math.random() > 0.7) {
+    if (Math.random() > 0.6) {
         let lY = Phaser.Math.Between(100, 500);
-        let l = lighters.create(650, lY, 'lighter').setScale(0.08);
+        let l = lighters.create(600, lY, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180);
-        l.setData('startY', lY); l.setData('time', 0);
-        l.body.setCircle(360).setOffset(180, 90);
+        l.angle = 0;
         flames.add(this.add.image(l.x, lY, 'flame').setScale(0.08).setDepth(11));
     }
 }
 
 function update() {
-    starGroupFar.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -50) s.destroy(); });
-    starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -50) s.destroy(); });
-
-    if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
+    if (!isStarted) return;
     if (player.y > 600 || player.y < 0) { gameOver.call(this); return; }
-
-    vaporTrail.emitParticleAt(player.x - 20, player.y);
 
     bongs.getChildren().forEach(b => {
         if (b.x < player.x && !b.scored) { 
-            score += 0.5; if(Math.floor(score) > Math.floor(score - 0.5)) scoreText.setText(playerName + ": " + Math.floor(score));
+            score += 0.5; 
+            if(Math.floor(score) > Math.floor(score - 0.5)) scoreText.setText(playerName + ": " + Math.floor(score));
             b.scored = true; 
         }
         if (b.x < -100) b.destroy();
     });
 
     lighters.getChildren().forEach((l, i) => {
-        let t = l.getData('time') + 0.02; l.setData('time', t);
-        l.y = l.getData('startY') + Math.sin(t) * 30; l.angle += 2;
+        l.angle += 2;
         let f = flames.getChildren()[i];
         if (f) {
             let rad = Phaser.Math.DegToRad(l.angle);
-            // MOVING LEFT: -58 to really get it on the tip
-            f.x = l.x + Math.cos(rad) * -58; 
-            f.y = l.y + Math.sin(rad) * -58;
+            f.x = l.x + Math.cos(rad) * -60; // Locked to the left tip
+            f.y = l.y + Math.sin(rad) * -60;
             f.angle = l.angle;
-            // SLOW FLICKER (Every 200ms)
-            if(Math.floor(this.time.now / 200) % 2 === 0) {
-                f.setAlpha(0.5); f.setScale(0.07);
-            } else {
-                f.setAlpha(1); f.setScale(0.085);
-            }
+            f.setAlpha(this.time.now % 200 < 100 ? 0.6 : 1); // Realistic flicker
         }
         if (l.x < -100) { l.destroy(); if(f) f.destroy(); }
     });
 }
 
-function handleHit(obj) {
-    if (hasShield && obj) { 
-        hasShield = false; player.setTint(0xff0000); obj.destroy(); 
-        this.time.delayedCall(200, () => { if(isStarted) player.setTint(0xffffff); });
-        return;
-    }
-    gameOver.call(this);
-}
-
 function gameOver() { 
     if (!isStarted) return; isStarted = false;
-    player.setTint(0xff0000); this.physics.pause(); vaporTrail.stop();
-    if (this.spawnTimer) this.spawnTimer.remove();
+    this.physics.pause();
+    this.spawnTimer.remove();
     
     let final = Math.floor(score);
     if (final > champScore) { 
@@ -218,22 +165,14 @@ function gameOver() {
         recordText.setText('TENT RECORD: ' + final); 
     }
 
-    // Small, centered "Re-Up" menu
-    gameOverGroup = this.add.container(200, 300).setDepth(2000);
-    let bg = this.add.rectangle(0, 0, 260, 200, 0x0a0500, 0.95).setStrokeStyle(4, 0xffcc00);
-    let txt = this.add.text(0, -50, 'CASHED OUT!', { fontSize: '24px', fill: '#ffffff', fontFamily: 'Orbitron' }).setOrigin(0.5);
-    let scr = this.add.text(0, 0, final, { fontSize: '42px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5);
-    let btnBg = this.add.rectangle(0, 60, 160, 50, 0xffcc00).setInteractive();
-    let btnTxt = this.add.text(0, 60, 'RE-UP', { fontSize: '20px', fill: '#000', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5);
-    
-    gameOverGroup.add([bg, txt, scr, btnBg, btnTxt]);
-    
-    btnBg.on('pointerdown', () => {
-        gameOverGroup.destroy();
-        bongs.clear(true, true); lighters.clear(true, true); shields.clear(true, true); flames.clear(true, true);
-        this.physics.resume();
-        startGame.call(this);
-    });
+    // Direct UI overlay for Game Over
+    let overlay = document.getElementById('ui-layer');
+    overlay.style.display = 'flex';
+    document.getElementById('start-menu').innerHTML = `
+        <h2 style="color:#fff; margin:0;">CASHED OUT</h2>
+        <h1 style="color:#ffcc00; font-size:48px; margin:10px 0;">${final}</h1>
+        <button onclick="location.reload()">RE-UP</button>
+    `;
 }
 </script>
 </body>
