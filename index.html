@@ -7,8 +7,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
-        canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+        /* This keeps the game centered and prevents the 'huge' look */
+        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
+        canvas { box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); }
     </style>
 </head>
 <body>
@@ -16,15 +17,17 @@
 <script>
 let score = 0, isStarted = false, hasShield = false, playerName = "NUGGY";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
-let bgMusic, hopSound, player, bongs, lighters, flames, shields, scoreText, shieldStatusText, recordText;
-let startBtn, menuBox, titleText, nameInputDisplay;
+let bgMusic, hopSound, player, bongs, lighters, flames, scoreText, recordText;
 
 const config = {
     type: Phaser.AUTO,
-    width: 400,
-    height: 600,
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    width: 400, // Fixed internal width to prevent 'huge' graphics
+    height: 600, // Fixed internal height
     backgroundColor: '#000',
+    scale: {
+        mode: Phaser.Scale.FIT, // This fits the 400x600 box into your screen perfectly
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
     physics: { default: 'arcade', arcade: { gravity: { y: 1200 } } },
     scene: { preload, create, update }
 };
@@ -42,36 +45,40 @@ function preload() {
 }
 
 function create() {
-    const cx = 200;
-    const cy = 300;
+    const cx = 200, cy = 300;
 
-    // --- GAME UI ---
-    scoreText = this.add.text(20, 20, '', { fontSize: '24px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100).setVisible(false);
-    recordText = this.add.text(cx, 570, 'TENT RECORD: ' + champScore, { fontSize: '18px', fill: '#ffcc00', fontFamily: 'Orbitron' }).setOrigin(0.5).setDepth(100);
-    this.add.image(380, 580, 'summa_logo').setScale(0.1).setAlpha(0.3).setOrigin(1, 1);
+    // Background Record
+    recordText = this.add.text(cx, 570, 'TENT RECORD: ' + champScore, { fontSize: '18px', fill: '#ffcc00', fontFamily: 'Orbitron' }).setOrigin(0.5);
+    this.add.image(380, 580, 'summa_logo').setScale(0.1).setAlpha(0.2).setOrigin(1, 1);
 
-    // --- NATIVE PHASER MENU ---
-    menuBox = this.add.rectangle(cx, cy, 320, 360, 0x0a0500).setStrokeStyle(4, 0xffcc00).setDepth(50);
-    titleText = this.add.text(cx, cy - 110, 'HOPPYNUG', { fontSize: '32px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(51);
+    // --- CONSOLIDATED MENU ---
+    let menuGroup = this.add.container(0, 0).setDepth(100);
+    let bg = this.add.rectangle(cx, cy, 300, 300, 0x000000).setStrokeStyle(3, 0xffcc00);
+    let title = this.add.text(cx, cy - 90, 'HOPPYNUG', { fontSize: '30px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5);
     
-    // Fake Input Box
-    let inputBg = this.add.rectangle(cx, cy, 240, 50, 0xffffff).setDepth(51).setInteractive();
-    nameInputDisplay = this.add.text(cx, cy, 'CLICK TO TAG', { fontSize: '18px', fill: '#000', fontFamily: 'Orbitron' }).setOrigin(0.5).setDepth(52);
+    // The "Light Up" Button triggers Fullscreen to hide the address bar
+    let btn = this.add.rectangle(cx, cy + 60, 200, 60, 0xffcc00).setInteractive();
+    let btnTxt = this.add.text(cx, cy + 60, 'LIGHT UP', { fontSize: '22px', fill: '#000', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5);
     
-    startBtn = this.add.rectangle(cx, cy + 90, 220, 60, 0xffcc00).setInteractive().setDepth(51);
-    let startBtnTxt = this.add.text(cx, cy + 90, 'LIGHT UP', { fontSize: '24px', fill: '#000', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(52);
+    let promptTxt = this.add.text(cx, cy - 10, 'CLICK TO TAG', { fontSize: '16px', fill: '#ffffff', fontFamily: 'Orbitron' }).setOrigin(0.5).setInteractive();
 
-    // --- INPUT LOGIC ---
-    inputBg.on('pointerdown', () => {
-        let tag = prompt("ENTER ID TAG:", playerName);
-        if (tag) {
-            playerName = tag.toUpperCase().substring(0, 10);
-            nameInputDisplay.setText(playerName);
+    menuGroup.add([bg, title, btn, btnTxt, promptTxt]);
+
+    promptTxt.on('pointerdown', () => {
+        let name = prompt("ID TAG:", playerName);
+        if (name) {
+            playerName = name.toUpperCase().substring(0, 10);
+            promptTxt.setText(playerName);
         }
     });
 
-    startBtn.on('pointerdown', () => {
-        [menuBox, titleText, startBtn, startBtnTxt, inputBg, nameInputDisplay].forEach(el => el.destroy());
+    btn.on('pointerdown', () => {
+        // HIDES ADDRESS BAR
+        if (!this.scale.isFullscreen) {
+            this.scale.startFullscreen();
+        }
+        
+        menuGroup.destroy();
         if (this.sound.context.state === 'suspended') this.sound.context.resume();
         
         isStarted = true;
@@ -81,11 +88,14 @@ function create() {
         this.spawnTimer = this.time.addEvent({ delay: 2200, callback: spawnLevel, callbackScope: this, loop: true });
     });
 
-    // --- GAME ENGINE ---
+    // --- GAME WORLD ---
+    scoreText = this.add.text(20, 20, '', { fontSize: '24px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(10).setVisible(false);
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
     hopSound = this.sound.add('hop', { volume: 0.3 });
-    player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
+    
+    player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(5);
     player.body.allowGravity = false;
+    
     bongs = this.physics.add.group(); 
     lighters = this.physics.add.group(); 
     flames = this.add.group();
@@ -93,8 +103,8 @@ function create() {
     this.physics.add.overlap(player, bongs, () => gameOver.call(this));
     this.physics.add.overlap(player, lighters, () => gameOver.call(this));
 
-    this.input.on('pointerdown', (pointer) => { 
-        if (!isStarted || pointer.y > 500) return;
+    this.input.on('pointerdown', (p) => { 
+        if (!isStarted) return;
         player.setVelocityY(-400);
         hopSound.play(); 
         player.setTexture('nug_active'); 
@@ -107,13 +117,17 @@ function spawnLevel() {
     const y = Phaser.Math.Between(150, 450);
     const top = bongs.create(500, y - 160, 'bong').setOrigin(0.5, 1).setFlipY(true);
     const bot = bongs.create(500, y + 160, 'bong').setOrigin(0.5, 0);
-    [top, bot].forEach(b => { b.body.allowGravity = false; b.setVelocityX(-210); });
+    [top, bot].forEach(b => { 
+        b.body.allowGravity = false; 
+        b.setVelocityX(-210); 
+        b.body.setSize(60, 400); // Tighten hitboxes so it's not 'fucked'
+    });
 
     if (Math.random() > 0.6) {
         let lY = Phaser.Math.Between(100, 500);
         let l = lighters.create(600, lY, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180);
-        flames.add(this.add.image(l.x, lY, 'flame').setScale(0.08).setDepth(11));
+        flames.add(this.add.image(l.x, lY, 'flame').setScale(0.08).setDepth(6));
     }
 }
 
@@ -123,7 +137,8 @@ function update() {
 
     bongs.getChildren().forEach(b => {
         if (b.x < player.x && !b.scored) { 
-            score += 0.5; if(Math.floor(score) > Math.floor(score - 0.5)) scoreText.setText(playerName + ": " + Math.floor(score));
+            score += 0.5; 
+            if(Math.floor(score) > Math.floor(score - 0.5)) scoreText.setText(playerName + ": " + Math.floor(score));
             b.scored = true; 
         }
         if (b.x < -100) b.destroy();
@@ -146,7 +161,8 @@ function update() {
 function gameOver() { 
     if (!isStarted) return; isStarted = false;
     this.physics.pause();
-    setTimeout(() => { location.reload(); }, 1000);
+    this.add.text(200, 300, 'CASHED OUT', { fontSize: '32px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(200);
+    setTimeout(() => { location.reload(); }, 1500);
 }
 </script>
 </body>
