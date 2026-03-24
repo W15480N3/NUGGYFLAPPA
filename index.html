@@ -4,29 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>HoppyNug - SUMMA LUXE SPACE</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
+        /* Fallback to 'Orbitron' if installed, otherwise uses system-wide bold sans-serif */
+        body { 
+            margin: 0; padding: 0; background-color: #000; overflow: hidden; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; width: 100vw; 
+            font-family: 'Orbitron', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+        }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
         #ui-layer { position: absolute; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 5000; }
+        
         @keyframes goldPulse {
             0% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); border-color: #ffcc00; }
             50% { box-shadow: 0 0 60px rgba(255, 204, 0, 0.8); border-color: #ffffff; }
             100% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); border-color: #ffcc00; }
         }
+
         .menu { 
             pointer-events: auto; background: rgba(10, 5, 0, 0.95); 
             border: 3px solid #ffcc00; border-radius: 20px; padding: 40px; 
             color: white; text-align: center; text-transform: uppercase; width: 300px; display: none;
             position: absolute; animation: goldPulse 3s infinite ease-in-out;
         }
-        button { background: #ffcc00; color: #000; border: none; padding: 15px; font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; }
-        input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
+
+        button { 
+            background: #ffcc00; color: #000; border: none; padding: 15px; 
+            font-size: 22px; font-weight: 900; border-radius: 8px; cursor: pointer; 
+            width: 100%; font-family: inherit; 
+        }
+
+        input#player-name { 
+            background: #000; border: 2px solid #ffcc00; color: #ffcc00; 
+            padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; 
+            margin: 20px 0; width: 90%; outline: none; font-family: inherit; 
+        }
+
         .glow-text { color: #ffcc00; text-shadow: 0 0 20px #ffcc00; }
         #session-record { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 101; font-size: 22px; pointer-events: none; white-space: nowrap; }
         #mute-btn { position: absolute; top: 20px; right: 20px; pointer-events: auto; color: #ffcc00; font-size: 24px; cursor: pointer; z-index: 7000; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid #ffcc00; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
     </style>
+    <script src="phaser.min.js"></script>
 </head>
 <body>
     <div id="mute-btn">🔊</div>
@@ -68,6 +86,7 @@ const config = {
 const game = new Phaser.Game(config);
 
 function preload() {
+    // These must be in your Tablet folder
     this.load.image('nug', 'nug.png'); 
     this.load.image('nug_active', 'nug_active.png'); 
     this.load.image('bong', 'bong.png'); 
@@ -107,8 +126,8 @@ function create() {
 
     bongs = this.physics.add.group(); lighters = this.physics.add.group(); shieldLogos = this.physics.add.group(); flames = this.add.group();
 
-    scoreText = this.add.text(30, 30, '', { fontSize: '22px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
-    shieldStatusText = this.add.text(30, 60, '', { fontSize: '14px', fill: '#ffffff', fontFamily: 'Orbitron' }).setDepth(100);
+    scoreText = this.add.text(30, 30, '', { fontSize: '22px', fill: '#ffcc00', fontWeight: '900' }).setDepth(100);
+    shieldStatusText = this.add.text(30, 60, '', { fontSize: '14px', fill: '#ffffff' }).setDepth(100);
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
 
     this.physics.add.overlap(player, shieldLogos, (p, logo) => {
@@ -157,7 +176,6 @@ function spawnLevel() {
         let sy = Phaser.Math.Between(100, 500);
         let pwr = shieldLogos.create(750, sy, 'summa_logo').setScale(0.12);
         pwr.body.allowGravity = false; pwr.setVelocityX(-210); pwr.startY = sy;
-        // BIGGER HITBOX: RADIUS 280, ADJUSTED OFFSET FOR BETTER CATCHING
         pwr.body.setCircle(280).setOffset(200, -20);
     }
 }
