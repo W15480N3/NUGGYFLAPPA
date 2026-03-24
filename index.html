@@ -59,7 +59,7 @@
         <div id="game-over" class="menu">
             <h1 style="color: #ffffff; margin:0;">CASHED OUT!</h1>
             <p id="final-score-text" style="font-size: 28px; color: #ffcc00;">SCORE: 0</p>
-            <button id="retry-btn" onclick="resetGame()">RE-UP</button>
+            <button id="retry-btn">RE-UP</button>
         </div>
     </div>
 
@@ -76,14 +76,8 @@ const config = {
     width: 400,
     height: 600,
     backgroundColor: '#000',
-    scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-    },
-    physics: {
-        default: 'arcade',
-        arcade: { gravity: { y: 1200 }, debug: false }
-    },
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: false } },
     scene: { preload, create, update }
 };
 const game = new Phaser.Game(config);
@@ -103,21 +97,15 @@ function preload() {
 }
 
 function create() {
-    // FULLSCREEN TRIGGER
-    this.input.once('pointerdown', () => {
-        if (!this.scale.isFullscreen) { this.scale.startFullscreen(); }
-    });
-    
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
+    // Background Stars
     starGroupFar = this.add.group(); 
     starGroup = this.add.group();
-
     this.time.addEvent({ delay: 200, callback: () => {
         let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.2).setScale(0.5);
         star.setData('speed', 1); starGroupFar.add(star);
     }, loop: true });
-
     this.time.addEvent({ delay: 400, callback: () => {
         let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.6);
         star.setData('speed', 3); starGroup.add(star);
@@ -125,15 +113,18 @@ function create() {
 
     footerLogo = this.add.image(380, 580, 'summa_logo').setScale(0.12).setAlpha(0.5).setDepth(1).setOrigin(1,1);
 
+    // Particles
     vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.4, end: 1.5 }, alpha: { start: 0.6, end: 0 }, lifespan: 1000, speedX: { min: -150, max: -200 }, emitting: false }).setDepth(5);
     vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: -50, max: -100 }, frequency: -1 }).setDepth(4);
     vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: 50, max: 100 }, frequency: -1 }).setDepth(4);
     terpSparkle = this.add.particles(0, 0, 'terp_bit', { scale: { start: 1.2, end: 0 }, alpha: { start: 1, end: 0 }, lifespan: 800, speed: { min: 50, max: 150 }, emitting: false }).setDepth(15);
 
+    // Player Setup
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(45, 290, 95); 
     player.body.allowGravity = false;
 
+    // Groups
     bongs = this.physics.add.group(); 
     lighters = this.physics.add.group(); 
     shieldLogos = this.physics.add.group(); 
@@ -143,15 +134,16 @@ function create() {
     shieldStatusText = this.add.text(30, 60, '', { fontSize: '14px', fill: '#ffffff', fontFamily: 'Orbitron' }).setDepth(100);
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
 
+    // Collisions
     this.physics.add.overlap(player, shieldLogos, (p, logo) => {
         terpSparkle.emitParticleAt(logo.x, logo.y, 20); 
         logo.destroy(); hasShield = true; playSfx('shield');
         this.cameras.main.flash(200, 255, 204, 0);
     }, null, this);
-    
     this.physics.add.overlap(player, bongs, handleCollision, null, this);
     this.physics.add.overlap(player, lighters, handleCollision, null, this);
 
+    // Input
     this.input.on('pointerdown', () => { 
         if (!isStarted) {
             if(document.getElementById('leaderboard-screen').style.display === 'block') showMenu('start-menu');
@@ -162,9 +154,18 @@ function create() {
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
+    // Start Button Fix
     document.getElementById('start-btn').onclick = (e) => {
         e.stopPropagation();
+        // FORCE FULLSCREEN ON REAL CLICK
+        if (!this.scale.isFullscreen) { this.scale.startFullscreen(); }
         startGame.call(this);
+    };
+
+    // Retry Button Fix
+    document.getElementById('retry-btn').onclick = (e) => {
+        e.stopPropagation();
+        resetGame();
     };
 
     updateUI();
@@ -177,24 +178,22 @@ function startGame() {
     localStorage.setItem('hoppyNugName', playerName);
     isStarted = true; 
     player.body.allowGravity = true; 
+    player.setVelocityY(0); // Reset any rocket velocity
     vaporTrail.start(); 
     if (!isMuted && !bgMusic.isPlaying) bgMusic.play();
     
-    // Clear old events before starting new ones
     if (this.spawnTimer) this.spawnTimer.remove();
     this.spawnTimer = this.time.addEvent({ delay: 2200, callback: spawnLevel, callbackScope: this, loop: true }); 
     clearInterval(idleTimer);
 }
 
 function resetGame() {
-    showMenu(null);
+    showMenu('start-menu'); // Go back to start to reset player state
     score = 0;
     hasShield = false;
-    isStarted = true;
-    
-    // Restart the actual Phaser Scene
-    const scene = game.scene.scenes[0];
-    scene.scene.restart();
+    isStarted = false;
+    game.sound.stopAll();
+    game.scene.scenes[0].scene.restart();
 }
 
 function startIdleCycle() {
@@ -202,8 +201,8 @@ function startIdleCycle() {
     idleTimer = setInterval(() => {
         const nameInput = document.getElementById('player-name');
         if (!isStarted && document.activeElement !== nameInput) {
-            const startMenu = document.getElementById('start-menu');
-            showMenu(startMenu.style.display === 'block' ? 'leaderboard-screen' : 'start-menu');
+            const current = document.getElementById('start-menu').style.display === 'block' ? 'leaderboard-screen' : 'start-menu';
+            showMenu(current);
         }
     }, 5000);
 }
@@ -247,6 +246,7 @@ function update() {
 }
 
 function spawnLevel() {
+    if (!isStarted) return;
     const y = Phaser.Math.Between(150, 450);
     const top = bongs.create(550, y - 140, 'bong').setOrigin(0.5, 1).setFlipY(true);
     const bot = bongs.create(550, y + 140, 'bong').setOrigin(0.5, 0);
@@ -254,7 +254,7 @@ function spawnLevel() {
     top.setVelocityX(-210); bot.setVelocityX(-210);
     top.body.setSize(80, 380).setOffset(320, 0); bot.body.setSize(80, 380).setOffset(320, 0);
 
-    if (Math.random() > 0.5) {
+    if (Math.random() > 0.6) {
         let ly = Phaser.Math.Between(100, 500);
         let l = lighters.create(650, ly, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180); l.startY = ly;
@@ -274,7 +274,7 @@ function gameOver() {
     if (this.spawnTimer) this.spawnTimer.remove();
     
     let final = Math.floor(score);
-    if (final > highScore) localStorage.setItem('hoppyNugBest', final);
+    if (final > highScore) { highScore = final; localStorage.setItem('hoppyNugBest', final); }
     if (final > champScore) { 
         localStorage.setItem('hoppyNugChampScore', final); 
         localStorage.setItem('hoppyNugChampName', playerName); 
