@@ -9,10 +9,10 @@
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 10000; pointer-events: none; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 10000; }
         .menu { pointer-events: auto; background: rgba(10, 5, 0, 0.98); border: 4px solid #ffcc00; border-radius: 20px; padding: 40px; color: white; text-align: center; width: 300px; box-shadow: 0 0 50px #ffcc00; }
         button { background: #ffcc00; color: #000; border: none; padding: 18px; font-size: 24px; font-weight: 900; border-radius: 12px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; margin-top: 20px; }
-        input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
+        input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; pointer-events: auto; }
     </style>
 </head>
 <body>
@@ -46,7 +46,7 @@ function preload() {
     this.load.image('flame', 'flame.png');
     this.load.image('summa_logo', 'summa.png'); 
     this.load.audio('bgm', 'background_track.mp3');
-    this.load.audio('hop', 'jump_sound.mp3'); // RESTORED
+    this.load.audio('hop', 'jump_sound.mp3');
     
     let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2); s.generateTexture('star', 4, 4);
     let v = this.make.graphics(); v.fillStyle(0xffffff, 1); v.fillCircle(8, 8, 8); v.generateTexture('vapor_puff', 16, 16);
@@ -72,7 +72,7 @@ function create() {
     this.add.image(380, 580, 'summa_logo').setScale(0.12).setAlpha(0.5).setDepth(1).setOrigin(1,1);
 
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
-    hopSound = this.sound.add('hop', { volume: 0.3 }); // RESTORED
+    hopSound = this.sound.add('hop', { volume: 0.3 });
 
     vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.4, end: 1.5 }, alpha: { start: 0.6, end: 0 }, lifespan: 1000, speedX: { min: -150, max: -200 }, emitting: false }).setDepth(5);
     vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: -50, max: -100 }, frequency: -1 }).setDepth(4);
@@ -94,18 +94,29 @@ function create() {
     this.input.on('pointerdown', () => { 
         if (!isStarted) return;
         player.setVelocityY(-410);
-        hopSound.play(); // RESTORED
+        if (this.sound.context.state === 'suspended') this.sound.context.resume();
+        hopSound.play(); 
         player.setTexture('nug_active'); 
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
-    document.getElementById('start-btn').onclick = () => {
-        let nameIn = document.getElementById('player-name').value;
-        if(nameIn) playerName = nameIn.toUpperCase();
+    // FIXED: LIGHT UP BUTTON LOGIC
+    document.getElementById('start-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const inputField = document.getElementById('player-name');
+        if(inputField.value) playerName = inputField.value.toUpperCase();
+        inputField.blur(); // HIDE KEYBOARD
+        
         document.getElementById('ui-layer').style.display = 'none';
-        if (!this.scale.isFullscreen) this.scale.startFullscreen();
+        
+        if (!this.scale.isFullscreen) {
+            this.scale.startFullscreen();
+        }
+        
         startGame.call(this);
-    };
+    });
 }
 
 function startGame() {
@@ -168,12 +179,12 @@ function update() {
         let f = flames.getChildren()[i];
         if (f) {
             let rad = Phaser.Math.DegToRad(l.angle);
-            f.x = l.x + Math.cos(rad) * -45; // MOVED FURTHER LEFT (-45)
-            f.y = l.y + Math.sin(rad) * -45;
+            f.x = l.x + Math.cos(rad) * -52; // MOVED FURTHER LEFT TO TIP
+            f.y = l.y + Math.sin(rad) * -52;
             f.angle = l.angle;
-            if(this.time.now % 100 < 50) { // SLOWER FLICKER
-                f.setAlpha(Phaser.Math.FloatBetween(0.5, 1.0));
-                f.setScale(Phaser.Math.FloatBetween(0.075, 0.09));
+            if(this.time.now % 150 < 40) { // CALMER FLICKER
+                f.setAlpha(Phaser.Math.FloatBetween(0.4, 0.9));
+                f.setScale(Phaser.Math.FloatBetween(0.07, 0.085));
             }
         }
         if (l.x < -100) { l.destroy(); if(f) f.destroy(); }
@@ -203,7 +214,11 @@ function gameOver() {
     if (this.spawnTimer) this.spawnTimer.remove();
     
     let final = Math.floor(score);
-    if (final > champScore) { champScore = final; localStorage.setItem('hoppyNugChampScore', final); recordText.setText('TENT RECORD: ' + final); }
+    if (final > champScore) { 
+        champScore = final; 
+        localStorage.setItem('hoppyNugChampScore', final); 
+        recordText.setText('TENT RECORD: ' + final); 
+    }
 
     gameOverGroup = this.add.container(200, 300).setDepth(2000);
     let bg = this.add.rectangle(0, 0, 280, 220, 0x0a0500, 0.95).setStrokeStyle(4, 0xffcc00);
