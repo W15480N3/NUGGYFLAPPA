@@ -150,8 +150,6 @@ function spawnLevel() {
         let l = lighters.create(650, ly, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180); l.startY = ly;
         l.body.setCircle(360).setOffset(180, 90); 
-        
-        // Link the flame to the lighter so we can find it later
         let f = flames.create(l.x, ly, 'flame').setScale(0.08);
         l.setData('myFlame', f);
     }
@@ -159,7 +157,8 @@ function spawnLevel() {
         let sy = Phaser.Math.Between(100, 500);
         let pwr = shieldLogos.create(750, sy, 'summa_logo').setScale(0.12);
         pwr.body.allowGravity = false; pwr.setVelocityX(-210); pwr.startY = sy;
-        pwr.body.setCircle(180).setOffset(350, 60);
+        // BIGGER HITBOX: RADIUS 280, ADJUSTED OFFSET FOR BETTER CATCHING
+        pwr.body.setCircle(280).setOffset(200, -20);
     }
 }
 
@@ -189,8 +188,8 @@ function update() {
         if (f && f.active) { 
             let rad = Phaser.Math.DegToRad(l.angle + 180); 
             f.x = l.x + Math.cos(rad) * 55; f.y = l.y + Math.sin(rad) * 55; f.angle = l.angle; 
-            f.setScale(0.07 + Math.random() * 0.03); // FLICKER
-            f.setAlpha(0.6 + Math.random() * 0.4); // FLICKER
+            f.setScale(0.07 + Math.random() * 0.03); 
+            f.setAlpha(0.6 + Math.random() * 0.4); 
         }
         if (l.x < -100) { if(f) f.destroy(); l.destroy(); }
     });
@@ -204,10 +203,8 @@ function update() {
 function handleCollision(player, obstacle) {
     if (hasShield) { 
         hasShield = false; 
-        // IF IT'S A LIGHTER, KILL ITS SPECIFIC FLAME TOO
         let f = obstacle.getData('myFlame');
         if (f) f.destroy();
-        
         obstacle.destroy(); 
         this.cameras.main.shake(300, 0.02); 
         playSfx('crash'); 
