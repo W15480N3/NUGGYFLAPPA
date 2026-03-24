@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>HoppyNug - SUMMA LUXE</title>
+    <title>HoppyNug - ORIGINAL LUXE</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -12,7 +12,6 @@
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 999999; }
         .menu { pointer-events: auto; background: rgba(10, 5, 0, 0.98); border: 4px solid #ffcc00; border-radius: 20px; padding: 40px; color: white; text-align: center; width: 300px; display: none; position: absolute; box-shadow: 0 0 50px #ffcc00; }
         button { background: #ffcc00; color: #000; border: none; padding: 18px; font-size: 24px; font-weight: 900; border-radius: 12px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; margin-top: 20px; }
-        input#player-name { background: #000; border: 2px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 20px; border-radius: 8px; text-align: center; margin: 20px 0; width: 90%; outline: none; font-family: 'Orbitron', sans-serif; }
         #session-record { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 101; font-size: 24px; pointer-events: none; }
     </style>
 </head>
@@ -21,7 +20,6 @@
         <div id="session-record">TENT RECORD: 0</div>
         <div id="start-menu" class="menu" style="display: block;">
             <h1 style="color:#ffcc00; margin:0; font-size: 42px;">HOPPYNUG</h1>
-            <input type="text" id="player-name" placeholder="ID TAG" maxlength="10">
             <button id="start-btn">LIGHT UP</button>
         </div>
         <div id="game-over" class="menu">
@@ -35,7 +33,7 @@
 let score = 0, isStarted = false, hasShield = false;
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
 let bgMusic, player, bongs, lighters, flames, shields, vaporTrail, vaporUp, vaporDown, scoreText, shieldStatusText;
-let starLayerFar, starLayerMid;
+let starGroupFar, starGroup;
 
 const config = {
     type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000',
@@ -54,30 +52,41 @@ function preload() {
     this.load.image('summa_logo', 'summa.png'); 
     this.load.audio('bgm', 'background_track.mp3');
     
-    let g = this.make.graphics();
-    g.fillStyle(0xffffff, 0.4); g.fillCircle(8, 8, 8); g.generateTexture('smoke_tx', 16, 16);
-    g.clear(); g.fillStyle(0xffffff, 1); g.fillCircle(2, 2, 2); g.generateTexture('star_tx', 4, 4);
+    let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2); s.generateTexture('star', 4, 4);
+    let v = this.make.graphics(); v.fillStyle(0xffffff, 1); v.fillCircle(8, 8, 8); v.generateTexture('vapor_puff', 16, 16);
+    let t = this.make.graphics(); t.fillStyle(0xffcc00, 1); t.fillCircle(2, 2, 2); t.generateTexture('terp_bit', 4, 4);
 }
 
 function create() {
-    // PARALLAX STARS SETUP
-    starLayerFar = this.add.group();
-    starLayerMid = this.add.group();
-    for(let i=0; i<20; i++) {
-        starLayerFar.add(this.add.image(Phaser.Math.Between(0, 400), Phaser.Math.Between(0, 600), 'star_tx').setAlpha(0.2).setScale(0.5));
-        starLayerMid.add(this.add.image(Phaser.Math.Between(0, 400), Phaser.Math.Between(0, 600), 'star_tx').setAlpha(0.5).setScale(0.8));
-    }
+    // FORCE FULLSCREEN ON FIRST TAP
+    this.input.once('pointerdown', () => {
+        if (!this.scale.isFullscreen) this.scale.startFullscreen();
+    });
 
-    this.add.image(380, 580, 'summa_logo').setScale(0.1).setAlpha(0.2).setOrigin(1,1);
+    starGroupFar = this.add.group();
+    starGroup = this.add.group();
+
+    // Star Spawn Timers (Restored Parallax)
+    this.time.addEvent({ delay: 200, callback: () => {
+        let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.2).setScale(0.5);
+        star.setData('speed', 1); starGroupFar.add(star);
+    }, loop: true });
+
+    this.time.addEvent({ delay: 400, callback: () => {
+        let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.6);
+        star.setData('speed', 3); starGroup.add(star);
+    }, loop: true });
+
     scoreText = this.add.text(20, 20, '', { fontSize: '28px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
-    shieldStatusText = this.add.text(20, 55, '', { fontSize: '16px', fill: '#ffffff', fontFamily: 'Orbitron', fontWeight: '700' }).setDepth(100);
-    
+    shieldStatusText = this.add.text(20, 55, '', { fontSize: '16px', fill: '#ffffff', fontFamily: 'Orbitron' }).setDepth(100);
+    this.add.image(380, 580, 'summa_logo').setScale(0.12).setAlpha(0.5).setDepth(1).setOrigin(1,1);
+
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
 
-    // SMOKE: Drifts right (+40) and looks bigger (scale 1.5 to 3.5)
-    vaporTrail = this.add.particles(0, 0, 'smoke_tx', { scale: { start: 0.4, end: 1 }, alpha: { start: 0.4, end: 0 }, lifespan: 600, speedX: -100, emitting: false }).setDepth(5);
-    vaporUp = this.add.particles(0, 0, 'smoke_tx', { scale: { start: 1.5, end: 3.5 }, alpha: { start: 0.2, end: 0 }, lifespan: 2500, speedX: 40, speedY: -50, frequency: -1 }).setDepth(4);
-    vaporDown = this.add.particles(0, 0, 'smoke_tx', { scale: { start: 1.5, end: 3.5 }, alpha: { start: 0.2, end: 0 }, lifespan: 2500, speedX: 40, speedY: 50, frequency: -1 }).setDepth(4);
+    // Restored Original Particle Configs
+    vaporTrail = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.4, end: 1.5 }, alpha: { start: 0.6, end: 0 }, lifespan: 1000, speedX: { min: -150, max: -200 }, emitting: false }).setDepth(5);
+    vaporUp = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: -50, max: -100 }, frequency: -1 }).setDepth(4);
+    vaporDown = this.add.particles(0, 0, 'vapor_puff', { scale: { start: 0.5, end: 2 }, alpha: { start: 0.5, end: 0 }, lifespan: 1500, speedY: { min: 50, max: 100 }, frequency: -1 }).setDepth(4);
 
     player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
     player.body.setCircle(45, 290, 95); 
@@ -94,16 +103,13 @@ function create() {
 
     this.input.on('pointerdown', () => { 
         if (!isStarted) return;
-        player.setVelocityY(-420);
+        player.setVelocityY(-410);
         player.setTexture('nug_active'); 
-        this.time.delayedCall(120, () => { if (isStarted) player.setTexture('nug'); }); 
+        this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
-    document.getElementById('start-btn').onclick = () => { 
-        if (!this.scale.isFullscreen) this.scale.startFullscreen();
-        startGame.call(this); 
-    };
-    document.getElementById('retry-btn').onclick = () => { location.reload(); };
+    document.getElementById('start-btn').onclick = () => startGame.call(this);
+    document.getElementById('retry-btn').onclick = () => location.reload();
     updateUI();
 }
 
@@ -111,36 +117,46 @@ function startGame() {
     document.getElementById('start-menu').style.display = 'none';
     isStarted = true; score = 0; hasShield = false;
     player.body.allowGravity = true;
-    player.body.setVelocity(0, 0);
     vaporTrail.start(); 
     if (!bgMusic.isPlaying) bgMusic.play();
-    this.spawnTimer = this.time.addEvent({ delay: 2000, callback: spawnLevel, callbackScope: this, loop: true }); 
+    this.spawnTimer = this.time.addEvent({ delay: 2200, callback: spawnLevel, callbackScope: this, loop: true }); 
 }
 
 function spawnLevel() {
     if (!isStarted) return;
     const y = Phaser.Math.Between(150, 450);
-    const top = bongs.create(500, y - 140, 'bong').setOrigin(0.5, 1).setFlipY(true);
-    const bot = bongs.create(500, y + 140, 'bong').setOrigin(0.5, 0);
-    [top, bot].forEach(b => { b.body.allowGravity = false; b.setVelocityX(-220); b.body.setSize(80, 380).setOffset(320, 0); });
+    const top = bongs.create(550, y - 140, 'bong').setOrigin(0.5, 1).setFlipY(true);
+    const bot = bongs.create(550, y + 140, 'bong').setOrigin(0.5, 0);
+    [top, bot].forEach(b => { 
+        b.body.allowGravity = false; b.setVelocityX(-210); 
+        b.body.setSize(80, 380).setOffset(320, 0);
+    });
 
-    if (Phaser.Math.Between(0, 10) > 7) {
+    // RESTORED: Sinusoidal Lighter Movement & Tip Flame
+    if (Math.random() > 0.7) {
         let lY = Phaser.Math.Between(100, 500);
-        let l = lighters.create(600, lY, 'lighter').setScale(0.08);
+        let l = lighters.create(650, lY, 'lighter').setScale(0.08);
         l.body.allowGravity = false; l.setVelocityX(-180);
+        l.setData('startY', lY); l.setData('time', 0);
         l.body.setCircle(360).setOffset(180, 90);
-        flames.add(this.add.image(l.x, lY, 'flame').setScale(0.08).setDepth(11));
+        
+        let f = this.add.image(l.x, lY, 'flame').setScale(0.08).setDepth(11);
+        flames.add(f);
     }
-    if (Phaser.Math.Between(0, 10) > 8 && !hasShield) {
-        let s = shields.create(600, Phaser.Math.Between(100, 500), 'summa_logo').setScale(0.1).setTint(0xffcc00);
-        s.body.allowGravity = false; s.setVelocityX(-200);
+
+    // RESTORED: Sinusoidal Shield Movement
+    if (Math.random() > 0.85 && !hasShield) {
+        let sY = Phaser.Math.Between(150, 450);
+        let s = shields.create(600, sY, 'summa_logo').setScale(0.1).setTint(0xffcc00);
+        s.body.allowGravity = false; s.setVelocityX(-210);
+        s.setData('startY', sY); s.setData('time', 0);
     }
 }
 
-function update() {
-    // PARALLAX MOVEMENT
-    starLayerFar.getChildren().forEach(s => { s.x -= 0.5; if(s.x < -10) s.x = 410; });
-    starLayerMid.getChildren().forEach(s => { s.x -= 1.5; if(s.x < -10) s.x = 410; });
+function update(time, delta) {
+    // Parallax Star Movement
+    starGroupFar.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -50) s.destroy(); });
+    starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -50) s.destroy(); });
 
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
     if (player.y > 600 || player.y < 0) { gameOver.call(this); return; }
@@ -148,36 +164,47 @@ function update() {
     vaporTrail.emitParticleAt(player.x - 20, player.y);
 
     bongs.getChildren().forEach(b => {
-        if (this.time.now % 180 < 20) {
+        // FIXED: Smoke only emits when bong is on screen
+        if (b.x > -50 && b.x < 450 && this.time.now % 100 < 25) {
             if (b.flipY) vaporDown.emitParticleAt(b.x, b.y + 10);
             else vaporUp.emitParticleAt(b.x, b.y - 10);
         }
         if (b.x < player.x && !b.scored) { 
-            score += 0.5; if(Math.floor(score) > Math.floor(score - 0.5)) { 
-                scoreText.setText("NUG: " + Math.floor(score)); 
-            }
+            score += 0.5; if(Math.floor(score) > Math.floor(score - 0.5)) scoreText.setText("NUG: " + Math.floor(score));
             b.scored = true; 
         }
+        if (b.x < -100) b.destroy(); // CLEANUP
     });
 
-    flames.getChildren().forEach((f, i) => {
-        let l = lighters.getChildren()[i];
-        if (l) { f.x = l.x; f.y = l.y; f.angle = l.angle += 4; } else f.destroy();
+    // RESTORED: Lighter Sine Wave & Flame Flickering
+    lighters.getChildren().forEach((l, i) => {
+        let t = l.getData('time') + 0.05; l.setData('time', t);
+        l.y = l.getData('startY') + Math.sin(t) * 30;
+        l.angle += 2;
+        
+        let f = flames.getChildren()[i];
+        if (f) {
+            f.x = l.x; f.y = l.y; f.angle = l.angle;
+            f.setAlpha(0.7 + Math.random() * 0.3); // Flickering
+            f.setScale(0.07 + Math.random() * 0.02); // Flickering
+        }
+        if (l.x < -100) { l.destroy(); if(f) f.destroy(); }
     });
 
-    if (hasShield && isStarted) {
-        player.setTint(0xffcc00); shieldStatusText.setText("🛡️ SUMMA SHIELD ACTIVE");
-    } else {
-        player.clearTint(); shieldStatusText.setText("");
-    }
+    shields.getChildren().forEach(s => {
+        let t = s.getData('time') + 0.05; s.setData('time', t);
+        s.y = s.getData('startY') + Math.sin(t) * 50;
+        if (s.x < -100) s.destroy();
+    });
+
+    if (hasShield) { player.setTint(0xffcc00); shieldStatusText.setText("🛡️ SUMMA SHIELD ACTIVE"); }
+    else { player.clearTint(); shieldStatusText.setText(""); }
 }
 
 function handleHit(obj) {
     player.setTint(0xff0000);
-    if (hasShield) { 
-        hasShield = false; obj.destroy(); this.cameras.main.shake(200, 0.02); 
-        this.time.delayedCall(200, () => { if(isStarted) player.clearTint(); });
-    } else { gameOver.call(this); }
+    if (hasShield) { hasShield = false; obj.destroy(); this.cameras.main.shake(200, 0.02); }
+    else { gameOver.call(this); }
 }
 
 function gameOver() { 
