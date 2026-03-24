@@ -9,30 +9,23 @@
     <style>
         body { margin: 0; padding: 0; background-color: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; font-family: 'Orbitron', sans-serif; }
         canvas { width: 100vw !important; height: 100vh !important; object-fit: contain; }
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 2000; }
-        .menu { pointer-events: auto; background: rgba(10, 5, 0, 0.98); border: 4px solid #ffcc00; border-radius: 20px; padding: 40px; color: white; text-align: center; width: 300px; display: none; position: absolute; box-shadow: 0 0 50px #ffcc00; z-index: 3000; }
+        #start-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 10000; pointer-events: auto; }
+        .menu { background: rgba(10, 5, 0, 0.98); border: 4px solid #ffcc00; border-radius: 20px; padding: 40px; color: white; text-align: center; width: 300px; box-shadow: 0 0 50px #ffcc00; }
         button { background: #ffcc00; color: #000; border: none; padding: 18px; font-size: 24px; font-weight: 900; border-radius: 12px; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; margin-top: 20px; }
-        #session-record { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); color: #ffcc00; font-weight: 900; z-index: 2500; font-size: 24px; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="ui-layer">
-        <div id="session-record">TENT RECORD: 0</div>
-        <div id="start-menu" class="menu" style="display: block;">
+    <div id="start-layer">
+        <div id="start-menu" class="menu">
             <h1 style="color:#ffcc00; margin:0; font-size: 42px;">HOPPYNUG</h1>
             <button id="start-btn">LIGHT UP</button>
-        </div>
-        <div id="game-over" class="menu">
-            <h1 style="margin:0; font-size: 32px;">CASHED OUT!</h1>
-            <p id="final-score-text" style="font-size: 36px; color: #ffcc00; margin: 20px 0;">0</p>
-            <button id="retry-btn">RE-UP</button>
         </div>
     </div>
 
 <script>
 let score = 0, isStarted = false, hasShield = false;
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
-let bgMusic, player, bongs, lighters, flames, shields, vaporTrail, vaporUp, vaporDown, scoreText, shieldStatusText;
+let bgMusic, player, bongs, lighters, flames, shields, vaporTrail, vaporUp, vaporDown, scoreText, shieldStatusText, recordText;
 let starGroupFar, starGroup;
 
 const config = {
@@ -57,11 +50,10 @@ function preload() {
 }
 
 function create() {
-    this.input.once('pointerdown', () => { if (!this.scale.isFullscreen) this.scale.startFullscreen(); });
-
     starGroupFar = this.add.group();
     starGroup = this.add.group();
 
+    // Parallax Star Spawning
     this.time.addEvent({ delay: 200, callback: () => {
         let star = this.add.image(420, Phaser.Math.Between(0, 600), 'star').setAlpha(0.2).setScale(0.5);
         star.setData('speed', 1); starGroupFar.add(star);
@@ -74,6 +66,7 @@ function create() {
 
     scoreText = this.add.text(20, 20, '', { fontSize: '28px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100);
     shieldStatusText = this.add.text(20, 55, '', { fontSize: '16px', fill: '#ffffff', fontFamily: 'Orbitron' }).setDepth(100);
+    recordText = this.add.text(200, 560, 'TENT RECORD: ' + champScore, { fontSize: '20px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(100);
     this.add.image(380, 580, 'summa_logo').setScale(0.12).setAlpha(0.5).setDepth(1).setOrigin(1,1);
 
     bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
@@ -97,18 +90,20 @@ function create() {
 
     this.input.on('pointerdown', () => { 
         if (!isStarted) return;
+        if (!this.scale.isFullscreen) this.scale.startFullscreen();
         player.setVelocityY(-410);
         player.setTexture('nug_active'); 
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
     });
 
-    document.getElementById('start-btn').onclick = () => startGame.call(this);
-    document.getElementById('retry-btn').onclick = () => location.reload();
-    updateUI();
+    document.getElementById('start-btn').onclick = () => {
+        document.getElementById('start-layer').style.display = 'none';
+        if (!this.scale.isFullscreen) this.scale.startFullscreen();
+        startGame.call(this);
+    };
 }
 
 function startGame() {
-    document.getElementById('start-menu').style.display = 'none';
     isStarted = true; score = 0; hasShield = false;
     player.body.allowGravity = true;
     vaporTrail.start(); 
@@ -149,7 +144,7 @@ function update(time, delta) {
     starGroup.getChildren().forEach(s => { s.x -= s.getData('speed'); if(s.x < -50) s.destroy(); });
 
     if (!isStarted) { player.y = 300 + Math.sin(this.time.now / 400) * 10; return; }
-    if (player.y > 600 || player.y < 0) { handleHit.call(this, null); return; }
+    if (player.y > 600 || player.y < 0) { gameOver.call(this); return; }
 
     vaporTrail.emitParticleAt(player.x - 20, player.y);
 
@@ -166,22 +161,25 @@ function update(time, delta) {
     });
 
     lighters.getChildren().forEach((l, i) => {
-        // SLOWED DOWN: 0.02 instead of 0.05
         let t = l.getData('time') + 0.02; l.setData('time', t);
         l.y = l.getData('startY') + Math.sin(t) * 30;
         l.angle += 2;
         
         let f = flames.getChildren()[i];
         if (f) {
-            f.x = l.x; f.y = l.y; f.angle = l.angle;
-            f.setAlpha(Phaser.Math.FloatBetween(0.4, 1.0)); // BETTER FLICKER
-            f.setScale(Phaser.Math.FloatBetween(0.07, 0.09)); // BETTER FLICKER
+            // MOVE FLAME TO TIP: Use Math.cos/sin to keep flame at the left tip during rotation
+            let rad = Phaser.Math.DegToRad(l.angle);
+            f.x = l.x + Math.cos(rad) * -35; 
+            f.y = l.y + Math.sin(rad) * -35;
+            f.angle = l.angle;
+            // AGGRESSIVE FLICKER
+            f.setAlpha(Phaser.Math.FloatBetween(0.3, 1.0));
+            f.setScale(Phaser.Math.FloatBetween(0.07, 0.10));
         }
         if (l.x < -100) { l.destroy(); if(f) f.destroy(); }
     });
 
     shields.getChildren().forEach(s => {
-        // SLOWED DOWN: 0.02 instead of 0.05
         let t = s.getData('time') + 0.02; s.setData('time', t);
         s.y = s.getData('startY') + Math.sin(t) * 50;
         if (s.x < -100) s.destroy();
@@ -208,16 +206,17 @@ function gameOver() {
     
     let final = Math.floor(score);
     if (final > champScore) { champScore = final; localStorage.setItem('hoppyNugChampScore', final); }
-    
-    // DELAYED UI POP TO ENSURE IT OVERLAYS FULLSCREEN
-    setTimeout(() => {
-        document.getElementById('game-over').style.display = 'block';
-        document.getElementById('final-score-text').innerText = final;
-        updateUI();
-    }, 100);
-}
 
-function updateUI() { document.getElementById('session-record').innerText = `TENT RECORD: ${champScore}`; }
+    // CANVAS-BASED UI (Bulletproof for Fullscreen)
+    let rect = this.add.rectangle(200, 300, 320, 250, 0x0a0500, 0.95).setStrokeStyle(4, 0xffcc00).setDepth(1000);
+    this.add.text(200, 230, 'CASHED OUT!', { fontSize: '32px', fill: '#ffffff', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(1001);
+    this.add.text(200, 280, final, { fontSize: '48px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(1001);
+    
+    let reupBtn = this.add.rectangle(200, 360, 200, 60, 0xffcc00).setDepth(1001).setInteractive();
+    this.add.text(200, 360, 'RE-UP', { fontSize: '24px', fill: '#000000', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(1002);
+    
+    reupBtn.on('pointerdown', () => { location.reload(); });
+}
 </script>
 </body>
 </html>
