@@ -60,10 +60,21 @@ let champName = localStorage.getItem('hoppyNugChampName') || "TENT PILOT";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
 let bgMusic, audioCtx, player, bongs, lighters, flames, vaporTrail, terpSparkle, vaporUp, vaporDown, starGroup, starGroupFar, scoreText, shieldStatusText, footerLogo;
 
-const config = { 
-    type: Phaser.AUTO, width: 400, height: 600, backgroundColor: '#000', 
-    physics: { default: 'arcade', arcade: { gravity: { y: 1200 }, debug: false } },
-    scene: { preload, create, update } 
+const config = {
+    type: Phaser.AUTO,
+    width: 400,
+    height: 600,
+    backgroundColor: '#000',
+    // ADD THIS SECTION IF IT'S NOT THERE
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    physics: {
+        default: 'arcade',
+        arcade: { gravity: { y: 1200 }, debug: false }
+    },
+    scene: { preload, create, update }
 };
 const game = new Phaser.Game(config);
 
@@ -82,6 +93,13 @@ function preload() {
 }
 
 function create() {
+    // This forces the game to fill the screen and hide browser bars on the first tap
+this.input.once('pointerdown', () => {
+    if (!this.scale.isFullscreen) {
+        this.scale.startFullscreen();
+    }
+});
+    
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
     // RESTORED STAR GROUPS
