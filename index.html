@@ -7,29 +7,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; width: 100vw; height: 100vh; }
-        #input-tag {
-            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 20; background: #fff; border: 3px solid #ffcc00; color: #000; 
-            padding: 12px; font-size: 22px; border-radius: 8px; width: 200px;
-            text-align: center; font-family: 'Orbitron', sans-serif; outline: none;
-        }
+        body { margin: 0; padding: 0; background-color: #000; overflow: hidden; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
     </style>
 </head>
 <body>
-    <input type="text" id="input-tag" placeholder="ID TAG" maxlength="10">
 
 <script>
 let score = 0, isStarted = false, hasShield = false, playerName = "NUGGY";
 let champScore = parseInt(localStorage.getItem('hoppyNugChampScore')) || 0;
 let bgMusic, hopSound, player, bongs, lighters, flames, shields, scoreText, shieldStatusText, recordText;
-let startBtn, menuBox, titleText;
+let startBtn, menuBox, titleText, nameInputDisplay;
 
 const config = {
     type: Phaser.AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
+    width: 400,
+    height: 600,
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     backgroundColor: '#000',
     physics: { default: 'arcade', arcade: { gravity: { y: 1200 } } },
     scene: { preload, create, update }
@@ -45,68 +39,63 @@ function preload() {
     this.load.image('summa_logo', 'summa.png'); 
     this.load.audio('bgm', 'background_track.mp3');
     this.load.audio('hop', 'jump_sound.mp3');
-    
-    // Star and Vapor Textures
-    let s = this.make.graphics(); s.fillStyle(0xffffff, 1); s.fillCircle(2, 2, 2); s.generateTexture('star', 4, 4);
-    let v = this.make.graphics(); v.fillStyle(0xffffff, 1); v.fillCircle(8, 8, 8); v.generateTexture('vapor_puff', 16, 16);
 }
 
 function create() {
-    const cx = this.cameras.main.centerX;
-    const cy = this.cameras.main.centerY;
+    const cx = 200;
+    const cy = 300;
 
-    // 1. UI SETUP
-    scoreText = this.add.text(25, 25, '', { fontSize: '32px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100).setVisible(false);
-    shieldStatusText = this.add.text(25, 65, '', { fontSize: '18px', fill: '#ffffff', fontFamily: 'Orbitron' }).setDepth(100).setVisible(false);
-    recordText = this.add.text(cx, window.innerHeight - 50, 'TENT RECORD: ' + champScore, { fontSize: '20px', fill: '#ffcc00', fontFamily: 'Orbitron' }).setOrigin(0.5).setDepth(100);
-    this.add.image(window.innerWidth - 25, window.innerHeight - 25, 'summa_logo').setScale(0.12).setAlpha(0.3).setOrigin(1, 1);
+    // --- GAME UI ---
+    scoreText = this.add.text(20, 20, '', { fontSize: '24px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setDepth(100).setVisible(false);
+    recordText = this.add.text(cx, 570, 'TENT RECORD: ' + champScore, { fontSize: '18px', fill: '#ffcc00', fontFamily: 'Orbitron' }).setOrigin(0.5).setDepth(100);
+    this.add.image(380, 580, 'summa_logo').setScale(0.1).setAlpha(0.3).setOrigin(1, 1);
 
-    // 2. MENU SETUP
-    menuBox = this.add.rectangle(cx, cy, 320, 320, 0x000000).setStrokeStyle(4, 0xffcc00).setDepth(50);
-    titleText = this.add.text(cx, cy - 100, 'HOPPYNUG', { fontSize: '36px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(51);
+    // --- NATIVE PHASER MENU ---
+    menuBox = this.add.rectangle(cx, cy, 320, 360, 0x0a0500).setStrokeStyle(4, 0xffcc00).setDepth(50);
+    titleText = this.add.text(cx, cy - 110, 'HOPPYNUG', { fontSize: '32px', fill: '#ffcc00', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(51);
     
-    startBtn = this.add.rectangle(cx, cy + 85, 220, 65, 0xffcc00).setInteractive().setDepth(51);
-    let startBtnTxt = this.add.text(cx, cy + 85, 'LIGHT UP', { fontSize: '26px', fill: '#000', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(52);
+    // Fake Input Box
+    let inputBg = this.add.rectangle(cx, cy, 240, 50, 0xffffff).setDepth(51).setInteractive();
+    nameInputDisplay = this.add.text(cx, cy, 'CLICK TO TAG', { fontSize: '18px', fill: '#000', fontFamily: 'Orbitron' }).setOrigin(0.5).setDepth(52);
+    
+    startBtn = this.add.rectangle(cx, cy + 90, 220, 60, 0xffcc00).setInteractive().setDepth(51);
+    let startBtnTxt = this.add.text(cx, cy + 90, 'LIGHT UP', { fontSize: '24px', fill: '#000', fontFamily: 'Orbitron', fontWeight: '900' }).setOrigin(0.5).setDepth(52);
 
-    // 3. GAME OBJECTS
-    bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
-    hopSound = this.sound.add('hop', { volume: 0.3 });
+    // --- INPUT LOGIC ---
+    inputBg.on('pointerdown', () => {
+        let tag = prompt("ENTER ID TAG:", playerName);
+        if (tag) {
+            playerName = tag.toUpperCase().substring(0, 10);
+            nameInputDisplay.setText(playerName);
+        }
+    });
 
-    player = this.physics.add.sprite(cx * 0.6, cy, 'nug').setScale(0.35).setDepth(10);
-    player.body.allowGravity = false;
-
-    bongs = this.physics.add.group(); 
-    lighters = this.physics.add.group(); 
-    shields = this.physics.add.group();
-    flames = this.add.group();
-
-    // 4. START LOGIC
     startBtn.on('pointerdown', () => {
-        let nameIn = document.getElementById('input-tag').value;
-        if(nameIn) playerName = nameIn.toUpperCase();
-        
-        document.getElementById('input-tag').style.display = 'none';
-        [menuBox, titleText, startBtn, startBtnTxt].forEach(el => el.destroy());
-
-        if (!this.scale.isFullscreen) this.scale.startFullscreen();
+        [menuBox, titleText, startBtn, startBtnTxt, inputBg, nameInputDisplay].forEach(el => el.destroy());
         if (this.sound.context.state === 'suspended') this.sound.context.resume();
-
+        
         isStarted = true;
         player.body.allowGravity = true;
         scoreText.setText(playerName + ": 0").setVisible(true);
-        shieldStatusText.setVisible(true);
         bgMusic.play();
-        this.spawnTimer = this.time.addEvent({ delay: 2000, callback: spawnLevel, callbackScope: this, loop: true });
+        this.spawnTimer = this.time.addEvent({ delay: 2200, callback: spawnLevel, callbackScope: this, loop: true });
     });
 
-    // 5. PHYSICS
-    this.physics.add.overlap(player, bongs, (p, b) => handleHit.call(this, b), null, this);
-    this.physics.add.overlap(player, lighters, (p, l) => handleHit.call(this, l), null, this);
-    this.physics.add.overlap(player, shields, (p, s) => { s.destroy(); hasShield = true; }, null, this);
+    // --- GAME ENGINE ---
+    bgMusic = this.sound.add('bgm', { loop: true, volume: 0.15 });
+    hopSound = this.sound.add('hop', { volume: 0.3 });
+    player = this.physics.add.sprite(100, 300, 'nug').setScale(0.35).setDepth(10);
+    player.body.allowGravity = false;
+    bongs = this.physics.add.group(); 
+    lighters = this.physics.add.group(); 
+    flames = this.add.group();
+
+    this.physics.add.overlap(player, bongs, () => gameOver.call(this));
+    this.physics.add.overlap(player, lighters, () => gameOver.call(this));
 
     this.input.on('pointerdown', (pointer) => { 
-        if (!isStarted) return;
-        player.setVelocityY(-420);
+        if (!isStarted || pointer.y > 500) return;
+        player.setVelocityY(-400);
         hopSound.play(); 
         player.setTexture('nug_active'); 
         this.time.delayedCall(150, () => { if (isStarted) player.setTexture('nug'); }); 
@@ -115,29 +104,22 @@ function create() {
 
 function spawnLevel() {
     if (!isStarted) return;
-    const x = window.innerWidth + 100;
-    const y = Phaser.Math.Between(window.innerHeight * 0.2, window.innerHeight * 0.8);
-    
-    const top = bongs.create(x, y - 170, 'bong').setOrigin(0.5, 1).setFlipY(true);
-    const bot = bongs.create(x, y + 170, 'bong').setOrigin(0.5, 0);
-    [top, bot].forEach(b => { b.body.allowGravity = false; b.setVelocityX(-230); });
+    const y = Phaser.Math.Between(150, 450);
+    const top = bongs.create(500, y - 160, 'bong').setOrigin(0.5, 1).setFlipY(true);
+    const bot = bongs.create(500, y + 160, 'bong').setOrigin(0.5, 0);
+    [top, bot].forEach(b => { b.body.allowGravity = false; b.setVelocityX(-210); });
 
-    if (Math.random() > 0.7) {
-        let lY = Phaser.Math.Between(100, window.innerHeight - 100);
-        let l = lighters.create(x + 300, lY, 'lighter').setScale(0.09);
-        l.body.allowGravity = false; l.setVelocityX(-200);
-        flames.add(this.add.image(l.x, lY, 'flame').setScale(0.09).setDepth(11));
-    }
-    
-    if (Math.random() > 0.85 && !hasShield) {
-        let s = shields.create(x + 150, Phaser.Math.Between(100, window.innerHeight - 100), 'summa_logo').setScale(0.12).setTint(0xffcc00);
-        s.body.allowGravity = false; s.setVelocityX(-230);
+    if (Math.random() > 0.6) {
+        let lY = Phaser.Math.Between(100, 500);
+        let l = lighters.create(600, lY, 'lighter').setScale(0.08);
+        l.body.allowGravity = false; l.setVelocityX(-180);
+        flames.add(this.add.image(l.x, lY, 'flame').setScale(0.08).setDepth(11));
     }
 }
 
 function update() {
     if (!isStarted) return;
-    if (player.y > window.innerHeight || player.y < 0) { gameOver.call(this); return; }
+    if (player.y > 600 || player.y < 0) { gameOver.call(this); return; }
 
     bongs.getChildren().forEach(b => {
         if (b.x < player.x && !b.scored) { 
@@ -152,39 +134,19 @@ function update() {
         let f = flames.getChildren()[i];
         if (f) {
             let rad = Phaser.Math.DegToRad(l.angle);
-            f.x = l.x + Math.cos(rad) * -65;
-            f.y = l.y + Math.sin(rad) * -65;
+            f.x = l.x + Math.cos(rad) * -60;
+            f.y = l.y + Math.sin(rad) * -60;
             f.angle = l.angle;
             f.setAlpha(this.time.now % 400 < 200 ? 0.4 : 1);
         }
         if (l.x < -100) { l.destroy(); if(f) f.destroy(); }
     });
-
-    if (hasShield) { player.setTint(0xffcc00); shieldStatusText.setText("🛡️ SUMMA SHIELD ACTIVE"); }
-    else { player.clearTint(); shieldStatusText.setText(""); }
-}
-
-function handleHit(obj) {
-    if (hasShield && obj) { 
-        hasShield = false; obj.destroy(); this.cameras.main.shake(200, 0.02);
-        return;
-    }
-    gameOver.call(this);
 }
 
 function gameOver() { 
     if (!isStarted) return; isStarted = false;
     this.physics.pause();
-    bgMusic.stop();
-    
-    let final = Math.floor(score);
-    if (final > champScore) { 
-        champScore = final; 
-        localStorage.setItem('hoppyNugChampScore', final); 
-    }
-    
-    // Smooth reset instead of refresh to keep fullscreen
-    setTimeout(() => { location.reload(); }, 1500);
+    setTimeout(() => { location.reload(); }, 1000);
 }
 </script>
 </body>
